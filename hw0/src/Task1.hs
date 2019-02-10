@@ -25,7 +25,6 @@ eitherAssoc
     <-> Either (Either a b) c
 eitherAssoc =
   (firstFunction, secondFunction)
-
   where
     firstFunction :: Either a (Either b c) -> Either (Either a b) c
     firstFunction (Left aValue) = Left (Left aValue)
