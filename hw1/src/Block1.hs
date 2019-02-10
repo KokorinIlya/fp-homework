@@ -58,6 +58,6 @@ contains e listOflists = containsAccum e listOflists []
       then True
       else listContains elementToCheck xs
 
--- \ Calculates sum of numbers, separated by whitespace characters
+-- | Calculates sum of numbers, separated by whitespace characters
 stringSum :: String -> Int
 stringSum string = sum $ map read $ words string
