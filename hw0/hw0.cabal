@@ -20,7 +20,8 @@ library
   hs-source-dirs:      src
   exposed-modules:     Task4,
                        Task1,
-                       Task2
+                       Task2,
+                       Task3
   ghc-options:         -Wall
   build-depends:       base >= 4.9 && < 5
   default-language:    Haskell2010
