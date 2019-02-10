@@ -1,7 +1,7 @@
 module Task4
        (
          factorial
-       --, smartReplicate
+       , iterateElement
        ) where
 
 import Data.Function (fix)
@@ -14,3 +14,9 @@ factorial = fix prefact
       if (n <= 1)
       then 1
       else n * f (n - 1)
+
+iterateElement :: a -> [a]
+iterateElement = fix preIterateElement
+  where
+    preIterateElement :: (a -> [a]) -> a -> [a]
+    preIterateElement f x = x:(f x)
