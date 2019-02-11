@@ -7,11 +7,14 @@ module Block2
 -- | if length of list is less then given index, returns element
 -- by given index and list without this element, otherwise, returns None
 deleteByIndex :: (Num it, Eq it) => it -> [t] -> Maybe (t, [t])
-deleteByIndex _ [] = Nothing
-deleteByIndex k (x:xs) | k == 0    = Just (x, xs)
-                       | otherwise = case (deleteByIndex (k - 1) xs) of
-                         Nothing -> Nothing
-                         Just (deleted, listTail) -> Just (deleted, x:listTail)
+deleteByIndex ind list = deleteByIndexAccum ind list []
+  where
+    deleteByIndexAccum :: (Num it, Eq it) => it -> [t] -> [t] -> Maybe (t, [t])
+    deleteByIndexAccum _ [] _ = Nothing
+    deleteByIndexAccum k (x:xs) accum
+      | k == 0 = Just (x, (reverse accum) ++ xs)
+      | otherwise = deleteByIndexAccum (k - 1) xs (x:accum)
+
 
 -- | Returns sorted list, O(N * log N) time complexity
 mergeSort :: Ord t => [t] -> [t]
