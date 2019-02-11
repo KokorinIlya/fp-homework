@@ -9,13 +9,14 @@ module Task4
 import Data.Function (fix)
 
 factorial :: Integer -> Integer
-factorial = fix prefact
+factorial n = factorialAccum n 1
   where
-    prefact :: (Integer -> Integer) -> Integer -> Integer
-    prefact = \f -> \n ->
-      if (n <= 1)
-      then 1
-      else n * f (n - 1)
+    factorialAccum :: Integer -> Integer -> Integer
+    factorialAccum = fix prefact
+
+    prefact :: (Integer -> Integer -> Integer) -> Integer -> Integer -> Integer
+    prefact f m acc | m <= 1 = acc
+                    | otherwise = f (m - 1) (acc * m)
 
 iterateElement :: a -> [a]
 iterateElement = fix preIterateElement
@@ -24,15 +25,32 @@ iterateElement = fix preIterateElement
     preIterateElement f x = x:(f x)
 
 fibonacci :: Integer -> Integer
-fibonacci = fix preFibonacci
+fibonacci number = fibonacciAcc number 1 1
   where
-    preFibonacci :: (Integer -> Integer) -> Integer -> Integer
-    preFibonacci f n | n == 0 || n == 1 = 1
-                     | otherwise = f (n - 1) + f (n - 2)
+    fibonacciAcc :: Integer -> Integer -> Integer -> Integer
+    fibonacciAcc = fix preFibonacci
+
+    preFibonacci
+      :: (Integer -> Integer -> Integer -> Integer)
+      -> Integer -> Integer -> Integer -> Integer
+    preFibonacci f n a b | n == 0 = a
+                         | otherwise = f (n - 1) b (a + b)
 
 mapFix :: (a -> b) -> [a] -> [b]
-mapFix = fix preMapFix
+mapFix g l = reverseList $ mapFixAccum g l []
   where
-    preMapFix :: ((a -> b) -> [a] -> [b]) -> (a -> b) -> [a] -> [b]
-    preMapFix _ _ [] = []
-    preMapFix f mapper (x:xs) = (mapper x):(f mapper xs)
+    mapFixAccum :: (a -> b) -> [a] -> [b] -> [b]
+    mapFixAccum = fix preMapFix
+
+    preMapFix
+      :: ((a -> b) -> [a] -> [b] -> [b])
+      -> (a -> b) -> [a] -> [b] -> [b]
+    preMapFix _ _ [] acc          = acc
+    preMapFix f mapper (x:xs) acc = f mapper xs ((mapper x):acc)
+
+    reverseList :: [a] -> [a]
+    reverseList list = reverseAccum list []
+
+    reverseAccum :: [a] -> [a] -> [a]
+    reverseAccum [] acc     = acc
+    reverseAccum (x:xs) acc = reverseAccum xs (x:acc)
