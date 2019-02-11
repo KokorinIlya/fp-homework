@@ -32,7 +32,7 @@ mergeSort list =
     mergeAcc [] l acc = (reverse l) ++ acc
     mergeAcc l [] acc = (reverse l) ++ acc
     mergeAcc first@(x:xs) second@(y:ys) acc
-      | x <= y = mergeAcc xs second (x:acc)
+      | x <= y    = mergeAcc xs second (x:acc)
       | otherwise = mergeAcc first ys (y:acc)
 
     divide :: (Num it, Eq it) => it -> [t] -> ([t], [t])
@@ -44,4 +44,4 @@ mergeSort list =
     divideAcc _ acc [] = (acc, [])
     divideAcc elementsLeft acc l@(x:xs)
       | elementsLeft == 0 = (acc, l)
-      | otherwise = divideAcc (elementsLeft - 1) (x:acc) xs
+      | otherwise         = divideAcc (elementsLeft - 1) (x:acc) xs
