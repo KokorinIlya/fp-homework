@@ -12,7 +12,7 @@ deleteByIndex ind list = deleteByIndexAccum ind list []
     deleteByIndexAccum :: (Num it, Eq it) => it -> [t] -> [t] -> Maybe (t, [t])
     deleteByIndexAccum _ [] _ = Nothing
     deleteByIndexAccum k (x:xs) accum
-      | k == 0 = Just (x, (reverse accum) ++ xs)
+      | k == 0    = Just (x, (reverse accum) ++ xs)
       | otherwise = deleteByIndexAccum (k - 1) xs (x:accum)
 
 
