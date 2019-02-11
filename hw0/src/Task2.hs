@@ -45,3 +45,9 @@ pierce = undefined
 -}
 doubleNegElim :: Neg (Neg a) -> a
 doubleNegElim = undefined
+
+excludedNeg :: Neg (Neg (Either a (Neg a)))
+excludedNeg = undefined
+
+thirdNegElim :: Neg (Neg (Neg a)) -> Neg a
+thirdNegElim = undefined
