@@ -52,5 +52,8 @@ mapFix g l = reverseList $ mapFixAccum g l []
     reverseList list = reverseAccum list []
 
     reverseAccum :: [a] -> [a] -> [a]
-    reverseAccum [] acc     = acc
-    reverseAccum (x:xs) acc = reverseAccum xs (x:acc)
+    reverseAccum = fix preReverse
+
+    preReverse :: ([a] -> [a] -> [a]) -> [a] -> [a] -> [a]
+    preReverse _ [] acc     = acc
+    preReverse f (x:xs) acc = f xs (x:acc)
