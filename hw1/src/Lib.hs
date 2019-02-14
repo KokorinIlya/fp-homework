@@ -3,6 +3,8 @@ module Lib
        checkPM
        ) where
 
+
+import Data.Foldable
 import Data.Function (fix)
 
 plusTwo :: [Int] -> [Int]
@@ -15,18 +17,13 @@ checkPM (x1:x2:xs)
         | x1 > 0 = 1
 checkPM (x:xs) = 2
 
-someList = let x = 1 : y
-               y = 2 : x
-               in x
+mapX :: (a -> b) -> [a] -> [b]
+mapX _ []     = []
+mapX f (x:xs) = f x : map f xs
 
-x :: [Int]
-x = 1 : y
-
-y :: [Int]
-y = 2 : x
-
-prefact :: (Int -> Int) -> Int -> Int
-prefact f n = if n == 0 then 1 else n * (f (n - 1))
-
-fact :: Int -> Int
-fact = fix prefact
+myMap :: (a -> b) -> [a] -> [b]
+myMap f l = mapAcc f l []
+  where
+    mapAcc :: (a -> b) -> [a] -> [b] -> [b]
+    mapAcc _ [] acc = acc
+    mapAcc mapper (x:xs) acc = mapAcc mapper xs ((mapper x):acc)

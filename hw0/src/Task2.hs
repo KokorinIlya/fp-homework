@@ -3,6 +3,7 @@ module Task2
          doubleNeg
        , pierce
        , doubleNegElim
+       ,thirdNegElim
        ) where
 
 import Data.Void (Void)
@@ -50,4 +51,11 @@ excludedNeg :: Neg (Neg (Either a (Neg a)))
 excludedNeg = undefined
 
 thirdNegElim :: Neg (Neg (Neg a)) -> Neg a
-thirdNegElim = undefined
+thirdNegElim f aValue =
+  {-
+  f :: ((a -> _|_) -> _|_) -> _|_
+  aValue :: a
+  negatedA :: (a -> _|_) -> _|_
+  -}
+  let negatedA = doubleNeg aValue in
+  f negatedA
