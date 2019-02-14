@@ -10,20 +10,13 @@ module Block1
 
 -- | Returns sorted 3-element tuple
 order3 :: Ord t => (t, t, t) -> (t, t, t)
-order3 (a, b, c) =
-  let first = if | (a <= b) && (a <= c) -> a
-                 | (b <= a) && (b <= c) -> b
-                 | otherwise -> c
-              in
-  let second = if | (a <= b) && (a >= c) -> a
-                  | (b <= a) && (b >= c) -> b
-                  | otherwise -> c
-               in
-  let third = if | (a >= b) && (a >= c) -> a
-                 | (b >= a) && (b >= c) -> b
-                 | otherwise -> c
-              in
-  (first, second, third)
+order3 (a, b, c)
+  | a <= b && b <= c = (a, b, c)
+  | a <= c && c <= b = (a, c, b)
+  | b <= a && a <= c = (b, a, c)
+  | b <= c && c <= a = (b, c, a)
+  | c <= a && a <= b = (c, a, b)
+  | otherwise        = (c, b, a)
 
 -- | If list element is equal N, replicates it N times
 smartReplicate :: (Num t, Ord t) => [t] -> [t]
