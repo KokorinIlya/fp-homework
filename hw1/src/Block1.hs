@@ -1,5 +1,3 @@
-{-# LANGUAGE MultiWayIf #-}
-
 module Block1
        (
          order3
