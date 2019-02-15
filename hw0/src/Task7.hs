@@ -2,6 +2,7 @@ module Task7
        (
          first
        , second
+       , third
        ) where
 
 first :: Bool
@@ -41,8 +42,8 @@ first = nullAfterHead $ mappedList
     nullAfterHead = ((.) :: (b -> c) -> (a -> b) -> a -> c)
       (null :: Foldable t => t a -> Bool) (head :: [a] -> a)
 
-second :: Integral a => a -> Bool
-second =
+third :: Integral a => a -> Bool
+third =
     let
       impl :: Bool -> Bool -> Bool
       impl = \x y -> ((||) :: Bool -> Bool -> Bool)
@@ -58,3 +59,15 @@ second =
         ((mod :: Integral a => a -> a -> a) x (4 :: Integral a => a))
         (0 :: Integral a => a) in
     \x -> ((isMod4 x) :: Bool) `impl` ((isMod2 x) :: Bool)
+
+second = (\x -> zip (lefts x) (rights x)) [Left (1 + 2), Right (2 ^ 6)]
+  where
+    lefts :: [Either a b] -> [a]
+    lefts []                  = []
+    lefts ((Left aValue):xs)  = aValue:(lefts xs)
+    lefts ((Right _):xs) = lefts xs
+
+    rights :: [Either a b] -> [b]
+    rights []                  = []
+    rights ((Left _):xs)  = rights xs
+    rights ((Right bValue):xs) = bValue:(rights xs)
