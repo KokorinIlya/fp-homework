@@ -21,7 +21,8 @@ library
   exposed-modules:     Block1,
                        Block2,
                        Nat,
-                       Trees
+                       Trees,
+                       Days
   ghc-options:         -Wall
   build-depends:       base >= 4.9 && < 5
   default-language:    Haskell2010
