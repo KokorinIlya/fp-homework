@@ -5,7 +5,7 @@ module Nat
        , isOdd
        ) where
 
-import Data.Ratio
+import           Data.Ratio
 
 data Nat = Z | S Nat
 
@@ -38,7 +38,7 @@ instance Num Nat where
 
   abs = id
 
-  signum Z = Z
+  signum Z     = Z
   signum (S _) = S Z
 
   fromInteger = fromNumber
@@ -65,7 +65,7 @@ instance Enum Nat where
   fromEnum = toNumber
 
 instance Real Nat where
-  toRational n = (toNumber n) % 1
+  toRational n = toNumber n % 1
 
 instance Integral Nat where
   toInteger = toNumber

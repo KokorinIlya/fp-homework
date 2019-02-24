@@ -23,7 +23,9 @@ library
                        Nat,
                        Trees,
                        Days,
-                       City
+                       City,
+                       Block4,
+                       Block5
   ghc-options:         -Wall
   build-depends:       base >= 4.9 && < 5
   default-language:    Haskell2010

@@ -1,3 +1,5 @@
+{-# LANGUAGE InstanceSigs #-}
+
 module Trees
        (
          Tree
@@ -10,7 +12,7 @@ module Trees
        , delete
        ) where
 
-import Data.List.NonEmpty( NonEmpty(..) )
+import           Block4 (NonEmpty (..))
 
 data Tree a = Empty | Node (Tree a) (NonEmpty a) (Tree a)
 
@@ -20,11 +22,11 @@ isEmpty _     = False
 
 size :: Tree a -> Int
 size Empty                   = 0
-size (Node left elems right) = (size left) + (length elems) + (size right)
+size (Node left elems right) = size left + length elems + size right
 
 contains :: Ord a => Tree a -> a -> Bool
 contains Empty _                               = False
-contains (Node left (x :| _) right) elemToFind = case (compare elemToFind x) of
+contains (Node left (x :| _) right) elemToFind = case compare elemToFind x of
   LT -> contains left elemToFind
   EQ -> True
   GT -> contains right elemToFind
@@ -33,7 +35,7 @@ insert :: Ord a => Tree a -> a -> Tree a
 insert Empty elemToInsert
   = Node Empty (elemToInsert :| []) Empty
 insert (Node left l@(x :| xs) right) elemToInsert
-  = case (compare elemToInsert x) of
+  = case compare elemToInsert x of
     LT ->
       let newLeft = insert left elemToInsert in
       Node newLeft l right
@@ -45,14 +47,12 @@ insert (Node left l@(x :| xs) right) elemToInsert
       Node left l newRight
 
 fromList :: Ord a => [a] -> Tree a
-fromList list = foldl addToTree Empty list
-  where
-    addToTree :: Ord a => Tree a -> a -> Tree a
-    addToTree tree element = insert tree element
+fromList = foldl insert Empty
+
 
 toList :: Tree a -> [a]
-toList Empty = []
-toList (Node left (x :| xs) right) = (toList left) ++ (x:xs) ++ (toList right)
+toList Empty                       = []
+toList (Node left (x :| xs) right) = toList left ++ x:xs ++ toList right
 
 instance Show a => Show (Tree a) where
   show tree = showLevel tree 0
@@ -69,7 +69,7 @@ instance Show a => Show (Tree a) where
 delete :: Ord a => Tree a -> a -> Tree a
 delete Empty _ = Empty
 delete (Node left l@(x :| xs) right) elemToDelete =
-  case (compare elemToDelete x) of
+  case compare elemToDelete x of
     LT ->
       let newLeft = delete left elemToDelete in
       Node newLeft l right
@@ -78,7 +78,7 @@ delete (Node left l@(x :| xs) right) elemToDelete =
         Empty -> right
         Node leftLeft leftList leftRight -> case right of
           Empty -> left
-          Node _ _ _ ->
+          Node{}->
             let (leftMax, newLeft) = extractMax leftLeft leftList leftRight in
             Node newLeft leftMax right
 
@@ -93,3 +93,19 @@ delete (Node left l@(x :| xs) right) elemToDelete =
     extractMax leftSubTree list (Node rightLeft rightList rightRight) =
       let (extractedMax, newRight) = extractMax rightLeft rightList rightRight in
       (extractedMax, Node leftSubTree list newRight)
+
+instance Foldable Tree where
+  foldMap :: Monoid m => (a -> m) -> Tree a -> m
+  foldMap _ Empty = mempty
+  foldMap f (Node left elems right) =
+    let leftFolded  = foldMap f left
+        rightFolded = foldMap f right
+        elemsFolded = foldMap f elems in
+    leftFolded <> elemsFolded <> rightFolded
+
+  foldr :: (a -> b -> b) -> b -> Tree a -> b
+  foldr _ z Empty = z
+  foldr f z (Node left elems right) =
+    let rightFolded = foldr f z right in
+    let elemsFolded = foldr f rightFolded elems in
+    foldr f elemsFolded left
