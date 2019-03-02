@@ -22,9 +22,21 @@ instance Ord Nat where
   compare Z (S _)     = LT
   compare (S a) (S b) = compare a b
 
+-- | Converts some number to Peano number
+-- >>> let numbers = [1,17,25,16,2,3,8]
+-- >>> let numbersPairs = [(x, y) | x <- numbers, y <- numbers]
+-- >>> filter (\(a,b) -> (fromNumber a) + (fromNumber b) /= fromNumber (a + b)) numbersPairs
+-- []
+-- >>> filter (\(a,b) -> (fromNumber a) * (fromNumber b) /= fromNumber (a * b)) numbersPairs
+-- []
+-- >>> filter (\(a,b) -> max 0 ((fromNumber a) - (fromNumber b)) /= fromNumber (a - b)) numbersPairs
+-- []
+-- >>> let getQuotRemPeano (a,b) = (fromNumber a, fromNumber b)
+-- >>> filter (\(a,b) -> quotRem (fromNumber a) (fromNumber b) /= getQuotRemPeano (quotRem a b)) numbersPairs
+-- []
 fromNumber :: (Ord a, Num a) => a -> Nat
 fromNumber x
-  | x > 0 = S $ fromNumber $ x - 1
+  | x > 0     = S $ fromNumber $ x - 1
   | otherwise = Z
 
 toNumber :: Num a => Nat -> a
@@ -37,12 +49,17 @@ toNumber n = toNumberAcc n 0
 instance Num Nat where
   (+) Z k     = k
   (+) (S n) k = S (n + k)
+
   abs = id
+
   signum Z     = Z
   signum (S _) = S Z
+
   fromInteger = fromNumber
+
   (*) Z _     = Z
   (*) (S k) n = k * n + n
+
   (-) Z _         = Z
   (-) k Z         = k
   (-) (S k) (S n) = k - n
@@ -50,10 +67,20 @@ instance Num Nat where
 instance Show Nat where
   show = show . (toNumber :: Nat -> Integer)
 
+-- | Tests, if number is even
+-- >>> isEven $ S $ S $ S $ S $ Z
+-- True
+-- >>> isEven $ S $ S $ S $ Z
+-- False
 isEven :: Nat -> Bool
 isEven Z     = True
 isEven (S k) = not $ isEven k
 
+-- | Tests, if number is odd
+-- >>> isOdd $ S $ S $ S $ S $ Z
+-- False
+-- >>> isOdd $ S $ S $ S $ Z
+-- True
 isOdd :: Nat -> Bool
 isOdd = not . isEven
 

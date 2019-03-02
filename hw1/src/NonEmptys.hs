@@ -9,6 +9,9 @@ data NonEmpty a =
   a :| [a]
   deriving (Show)
 
+instance Eq a => Eq (NonEmpty a) where
+  (x :| xs) == (y :| ys) = (x == y) && (xs == ys)
+
 instance Foldable NonEmpty where
   foldMap :: Monoid m => (a -> m) -> NonEmpty a -> m
   foldMap toMonoidMapper nonEmpty = foldMapAcc toMonoidMapper nonEmpty mempty
@@ -30,6 +33,13 @@ instance Functor NonEmpty where
   fmap :: (a -> b) -> NonEmpty a -> NonEmpty b
   fmap f (x :| xs) = f x :| fmap f xs
 
+-- | Reverses NonEmpty, as a non-empty list
+-- >>> reverseNonEmpty (1 :| [2, 3, 4]) == 4 :| [3, 2, 1]
+-- True
+-- >>> reverseNonEmpty (1 :| []) == 1 :| []
+-- True
+-- >>> reverseNonEmpty (1 :| [2, 3, 4]) == 1 :| [4, 3, 2]
+-- False
 reverseNonEmpty :: NonEmpty a -> NonEmpty a
 reverseNonEmpty orig@(_ :| []) = orig
 reverseNonEmpty (first :| (second:others)) = reverseNonEmptyAcc (second :| others) (first :| [])

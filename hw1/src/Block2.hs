@@ -5,6 +5,14 @@ module Block2
 
 -- | if length of list is less then given index, returns element
 -- by given index and list without this element, otherwise, returns None
+-- >>> deleteByIndex 5 [0..10]
+-- Just (5,[0,1,2,3,4,6,7,8,9,10])
+-- >>> deleteByIndex 0 [0..10]
+-- Just (0,[1,2,3,4,5,6,7,8,9,10])
+-- >>> deleteByIndex 10 [0..10]
+-- Just (10,[0,1,2,3,4,5,6,7,8,9])
+-- >>> deleteByIndex 17 [0..10]
+-- Nothing
 deleteByIndex :: (Num it, Eq it) => it -> [t] -> Maybe (t, [t])
 deleteByIndex ind list = deleteByIndexAccum ind list []
   where
@@ -15,6 +23,14 @@ deleteByIndex ind list = deleteByIndexAccum ind list []
       | otherwise = deleteByIndexAccum (k - 1) xs (x : accum)
 
 -- | Returns sorted list, O(N * log N) time complexity
+-- >>> mergeSort [8,3,1,5]
+-- [1,3,5,8]
+-- >>> mergeSort []
+-- []
+-- >>> mergeSort [1,17,5,3,89,-2]
+-- [-2,1,3,5,17,89]
+-- >>> mergeSort [5,1,-2,4,1]
+-- [-2,1,1,4,5]
 mergeSort :: Ord t => [t] -> [t]
 mergeSort [] = []
 mergeSort [x] = [x]
