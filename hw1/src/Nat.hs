@@ -1,13 +1,14 @@
 module Nat
-       (
-         Nat
-       , isEven
-       , isOdd
-       ) where
+  ( Nat
+  , isEven
+  , isOdd
+  ) where
 
 import           Data.Ratio
 
-data Nat = Z | S Nat
+data Nat
+  = Z
+  | S Nat
 
 instance Eq Nat where
   (==) Z Z         = True
@@ -22,8 +23,9 @@ instance Ord Nat where
   compare (S a) (S b) = compare a b
 
 fromNumber :: (Ord a, Num a) => a -> Nat
-fromNumber  x | x > 0     = S $ fromNumber $ x - 1
-              | otherwise = Z
+fromNumber x
+  | x > 0 = S $ fromNumber $ x - 1
+  | otherwise = Z
 
 toNumber :: Num a => Nat -> a
 toNumber n = toNumberAcc n 0
@@ -35,17 +37,12 @@ toNumber n = toNumberAcc n 0
 instance Num Nat where
   (+) Z k     = k
   (+) (S n) k = S (n + k)
-
   abs = id
-
   signum Z     = Z
   signum (S _) = S Z
-
   fromInteger = fromNumber
-
   (*) Z _     = Z
   (*) (S k) n = k * n + n
-
   (-) Z _         = Z
   (-) k Z         = k
   (-) (S k) (S n) = k - n
@@ -69,9 +66,9 @@ instance Real Nat where
 
 instance Integral Nat where
   toInteger = toNumber
-
   quotRem _ Z = error "Division by zero"
-  quotRem n k | n < k = (0, n)
-              | otherwise =
-                let (divisionResult, reminder) = quotRem (n - k) k in
-                (divisionResult + 1, reminder)
+  quotRem n k
+    | n < k = (0, n)
+    | otherwise =
+      let (divisionResult, reminder) = quotRem (n - k) k
+       in (divisionResult + 1, reminder)

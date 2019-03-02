@@ -28,12 +28,12 @@ churchPlus :: Nat a -> Nat a -> Nat a
 churchPlus n m f z = n f (m f z)
 
 churchMult :: Nat a -> Nat a -> Nat a
-churchMult n m f z = n (m f) z
+churchMult n m f = n (m f)
 
 churchFromNum :: (Num t, Eq t) => t -> Nat a
 churchFromNum n = churchFromNumAcc n zero
   where
     churchFromNumAcc :: (Num t, Eq t) => t -> Nat a -> Nat a
     churchFromNumAcc m acc
-      | m == 0    = acc
-      | otherwise = churchFromNumAcc (m - 1) (\f -> \z -> f $ acc f z)
+      | m == 0 = acc
+      | otherwise = churchFromNumAcc (m - 1) (\f -> f . acc f)
