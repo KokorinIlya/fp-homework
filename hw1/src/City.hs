@@ -1,23 +1,23 @@
 module City
-  ( City(..)
+  ( AddLordError (..)
+  , BuildChurchOrLibraryError
+  , BuildWallsError
+  , Castle (..)
+  , CastleBuildingError
+  , City(..)
   , ChurchOrLibrary(..)
   , Family(..)
+  , House (..)
   , LordName(..)
-  , Castle(..)
-  , House(..)
-  , CastleBuildingError(..)
   , Walls(..)
-  , AddLordError(..)
-  , BuildWallsError(..)
-  , BuildChurchOrLibraryError(..)
+  , addLord
   , buildCastle
   , buildChurchOrLibrary
   , buildHouse
-  , addLord
   , buildWall
   ) where
 
-import           NonEmptys (NonEmpty (..))
+import           NonEmpty (NonEmpty (..))
 
 data City = City
   { churchOrLibrary :: ChurchOrLibrary

@@ -1,11 +1,11 @@
 {-# LANGUAGE MultiWayIf #-}
 
-module Days
+module Day
   ( Day(..)
-  , nextDays
-  , isWeekend
   , afterDays
   , daysToParty
+  , isWeekend
+  , nextDays
   ) where
 
 data Day

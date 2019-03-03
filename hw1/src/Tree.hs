@@ -1,17 +1,17 @@
 {-# LANGUAGE InstanceSigs #-}
 
-module Trees
+module Tree
   ( Tree
+  , contains
+  , delete
+  , fromList
+  , insert
   , isEmpty
   , size
-  , contains
-  , insert
-  , fromList
   , toList
-  , delete
   ) where
 
-import           Block4 (NonEmpty (..))
+import NonEmpty (NonEmpty (..))
 
 data Tree a
   = Empty

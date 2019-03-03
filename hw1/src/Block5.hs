@@ -1,14 +1,18 @@
 module Block5
-  ( maybeConcat
-  , eitherConcat
-  , ThisOrThat(..)
+  ( Builder(..)
   , Name(..)
-  , Builder(..)
-  , fromString
+  , ThisOrThat(..)
+  , eitherConcat
   , fastConcat
+  , fromString
+  , maybeConcat
   , toString
   ) where
 
+-- | Concats list (or another foldable structure) of maybe, returning monoid composition of elements
+-- inside Just, without Nothing
+-- >>> maybeConcat [Just [1,2,3], Nothing, Just [4,5]]
+-- [1,2,3,4,5]
 maybeConcat :: (Monoid m, Foldable t) => t (Maybe m) -> m
 maybeConcat = foldMap mapToMonad
   where
@@ -16,6 +20,10 @@ maybeConcat = foldMap mapToMonad
     mapToMonad Nothing  = mempty
     mapToMonad (Just x) = x
 
+-- | Converts some foldable structure, containing Either l r to combination
+-- of monoidal composition of all lefts and rights
+-- >>> eitherConcat [Left "aba", Right [1,2,3], Left "caba", Right [4,5]]
+-- ("abacaba",[1,2,3,4,5])
 eitherConcat :: (Foldable t, Monoid l, Monoid r) => t (Either l r) -> (l, r)
 eitherConcat = foldMap processElem
   where
@@ -80,8 +88,12 @@ instance Semigroup Builder where
 instance Monoid Builder where
   mempty = Many []
 
+-- | Converts string to builder
 fromString :: String -> Builder
-fromString = foldMap One
+fromString = foldr addCharToBuilder mempty
+  where
+    addCharToBuilder :: Char -> Builder -> Builder
+    addCharToBuilder chr curBuilder = One chr <> curBuilder
 
 -- | Gives weaker post-conditions, than <> operator, because
 -- One 'a' `fastConcat` (Many [One 'b', One 'c']
@@ -90,12 +102,24 @@ fromString = foldMap One
 -- but it is faster. Post-condition is :
 -- toString $ x `fastConcat` (y `fastConcat` z) ==
 -- toString $ (x `fastConcat` y) `fastConcat` z
+-- >>> let strings = map fromString ["aba","caba","swsw","wadada","","awdawdwa","cbfhrh","whwdudw","x"]
+-- >>> let stringTriples = [(x, y, z) | x <- strings, y <- strings, z <- strings]
+-- >>> filter (\(a, b, c) -> (a <> b) <> c /= a <> (b <> c)) stringTriples
+-- []
+-- >>> filter (\(a, b, c) -> toString ((a `fastConcat` b) `fastConcat` c) /= toString (a `fastConcat` (b `fastConcat` c))) stringTriples
+-- []
+-- >>> filter (\(a, b, c) -> (a `fastConcat` b) `fastConcat` c /=  a `fastConcat` (b `fastConcat` c)) stringTriples /= []
+-- True
 fastConcat :: Builder -> Builder -> Builder
 fastConcat x (Many [])                               = x
 fastConcat (Many []) x                               = x
 fastConcat first@(One _) (Many (builder : builders)) = Many (first : builder : builders)
 fastConcat x y                                       = Many [x, y]
 
+-- | Converts builder to string
+-- >>> let strings = ["aba","caba","swsw","wadada","","awdawdwa","cbfhrh","whwdudw","x"]
+-- >>> filter (\s -> toString (fromString s) /= s) strings
+-- []
 toString :: Builder -> String
 toString (One c)     = [c]
 toString (Many list) = foldMap id (map toString list)

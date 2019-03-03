@@ -1,14 +1,13 @@
 module Task5
-       (
-         zero
-       , Nat
-       , succChurch
-       , churchToInt
-       , churchToNum
-       , churchPlus
-       , churchMult
-       , churchFromNum
-       ) where
+  ( Nat
+  , churchFromNum
+  , churchMult
+  , churchPlus
+  , churchToInt
+  , churchToNum
+  , succChurch
+  , zero
+  ) where
 
 type Nat a = (a -> a) -> a -> a
 
@@ -19,10 +18,10 @@ succChurch :: Nat a -> Nat a
 succChurch n f z = n f (f z)
 
 churchToInt :: Nat Integer -> Integer
-churchToInt n = n (+1) 0
+churchToInt n = n (+ 1) 0
 
 churchToNum :: Num t => Nat t -> t
-churchToNum n = n (+1) 0
+churchToNum n = n (+ 1) 0
 
 churchPlus :: Nat a -> Nat a -> Nat a
 churchPlus n m f z = n f (m f z)

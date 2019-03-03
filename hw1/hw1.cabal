@@ -27,13 +27,13 @@ library
   exposed-modules:     Block1,
                        Block2,
                        Nat,
-                       Trees,
-                       Days,
+                       Tree,
+                       Day,
                        City,
                        Block4,
                        Block5,
-                       NonEmptys,
-                       AATrees
+                       NonEmpty,
+                       AATree
   ghc-options:         -Wall
   build-depends:       base >= 4.9 && < 5
   default-language:    Haskell2010

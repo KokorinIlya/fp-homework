@@ -1,7 +1,7 @@
 module Task4
   ( factorial
-  , iterateElement
   , fibonacci
+  , iterateElement
   , mapFix
   ) where
 

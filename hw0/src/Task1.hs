@@ -2,8 +2,8 @@
 
 module Task1
        (
-         distributivity
-       , associator
+         associator
+       , distributivity
        , eitherAssoc
        ) where
 

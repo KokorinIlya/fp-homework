@@ -1,7 +1,7 @@
 module Block1
-  ( order3
+  ( contains
+  , order3
   , smartReplicate
-  , contains
   , stringSum
   ) where
 
@@ -34,8 +34,8 @@ smartReplicate :: (Num t, Ord t) => [t] -> [t]
 smartReplicate list = reverse $ smartReplicateAccum list []
   where
     smartReplicateAccum :: (Num t, Ord t) => [t] -> [t] -> [t]
-    smartReplicateAccum [] acc         = acc
-    smartReplicateAccum (num:nums) acc = smartReplicateAccum nums (replicateNumTimes num ++ acc)
+    smartReplicateAccum [] acc           = acc
+    smartReplicateAccum (num : nums) acc = smartReplicateAccum nums (replicateNumTimes num ++ acc)
 
     replicateNumTimes :: (Num t, Ord t) => t -> [t]
     replicateNumTimes n = replicateNumTimesAccum n n []
@@ -61,8 +61,8 @@ contains e listOflists = containsAccum e listOflists []
         else containsAccum element lists acc
 
     listContains :: Eq t => t -> [t] -> Bool
-    listContains _ []                  = False
-    listContains elementToCheck (x:xs) = (elementToCheck == x) || listContains elementToCheck xs
+    listContains _ []                    = False
+    listContains elementToCheck (x : xs) = (elementToCheck == x) || listContains elementToCheck xs
 
 -- | Calculates sum of numbers, separated by whitespace characters
 -- >>> stringSum "1 1"

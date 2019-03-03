@@ -1,9 +1,9 @@
 module Task2
   ( doubleNeg
-  , pierce
   , doubleNegElim
-  , thirdNegElim
   , excludedNeg
+  , pierce
+  , thirdNegElim
   ) where
 
 import           Data.Void (Void)

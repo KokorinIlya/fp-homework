@@ -1,6 +1,6 @@
 {-# LANGUAGE InstanceSigs #-}
 
-module NonEmptys
+module NonEmpty
   ( NonEmpty(..)
   , reverseNonEmpty
   ) where
