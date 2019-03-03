@@ -1,5 +1,7 @@
 module Nat
   ( Nat
+  , getDivResult
+  , getModResult
   , isEven
   , isOdd
   ) where
@@ -94,3 +96,11 @@ instance Integral Nat where
     | otherwise =
       let (divisionResult, reminder) = quotRem (n - k) k
        in (divisionResult + 1, reminder)
+
+-- | For natural numbers truncating toward negative infinity means the same as truncating toward zero
+-- So, div == quot, mod == rem
+getDivResult :: Nat -> Nat -> Nat
+getDivResult x y = fst $ quotRem x y
+
+getModResult :: Nat -> Nat -> Nat
+getModResult x y = snd $ quotRem x y
