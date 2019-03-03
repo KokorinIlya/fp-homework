@@ -39,14 +39,14 @@ data ThisOrThat a b
   deriving (Show)
 
 instance Semigroup (ThisOrThat a b) where
-  This _ <> second@(This _)     = second
-  This x <> That y              = Both x y
-  This _ <> second@(Both _ _)   = second
-  That x <> This y              = Both y x
-  That _ <> second@(That _)     = second
-  That _ <> second@(Both _ _)   = second
-  Both _ y <> This z            = Both z y
-  Both x _ <> That z            = Both x z
+  This _ <> second@(This _) = second
+  This x <> That y = Both x y
+  This _ <> second@(Both _ _) = second
+  That x <> This y = Both y x
+  That _ <> second@(That _) = second
+  That _ <> second@(Both _ _) = second
+  Both _ y <> This z = Both z y
+  Both x _ <> That z = Both x z
   Both _ _ <> second@(Both _ _) = second
 
 newtype Name =
@@ -55,9 +55,9 @@ newtype Name =
 
 instance Semigroup Name where
   Name first <> Name second
-    | first == ""  = Name second
+    | first == "" = Name second
     | second == "" = Name first
-    | otherwise    = Name (first ++ "." ++ second)
+    | otherwise = Name (first ++ "." ++ second)
 
 instance Monoid Name where
   mempty = Name ""
@@ -78,11 +78,11 @@ data Builder
   deriving (Show, Eq)
 
 instance Semigroup Builder where
-  x <> Many []                                  = x
-  Many [] <> x                                  = x
-  first@(One _) <> second@(One _)               = Many [first, second]
-  first@(One _) <> Many (builder:builders)      = Many (first : builder : builders)
-  Many list@(_:_) <> first@(One _)              = Many (list ++ [first])
+  x <> Many [] = x
+  Many [] <> x = x
+  first@(One _) <> second@(One _) = Many [first, second]
+  first@(One _) <> Many (builder:builders) = Many (first : builder : builders)
+  Many list@(_:_) <> first@(One _) = Many (list ++ [first])
   Many firstList@(_:_) <> Many secondList@(_:_) = Many (firstList ++ secondList)
 
 instance Monoid Builder where
@@ -111,10 +111,10 @@ fromString = foldr addCharToBuilder mempty
 -- >>> filter (\(a, b, c) -> (a `fastConcat` b) `fastConcat` c /=  a `fastConcat` (b `fastConcat` c)) stringTriples /= []
 -- True
 fastConcat :: Builder -> Builder -> Builder
-fastConcat x (Many [])                               = x
-fastConcat (Many []) x                               = x
-fastConcat first@(One _) (Many (builder : builders)) = Many (first : builder : builders)
-fastConcat x y                                       = Many [x, y]
+fastConcat x (Many [])                             = x
+fastConcat (Many []) x                             = x
+fastConcat first@(One _) (Many (builder:builders)) = Many (first : builder : builders)
+fastConcat x y                                     = Many [x, y]
 
 -- | Converts builder to string
 -- >>> let strings = ["aba","caba","swsw","wadada","","awdawdwa","cbfhrh","whwdudw","x"]

@@ -5,7 +5,7 @@ module Task4
   , mapFix
   ) where
 
-import           Data.Function (fix)
+import Data.Function (fix)
 
 factorial :: Integer -> Integer
 factorial n = factorialAccum n 1

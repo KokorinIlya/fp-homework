@@ -4,7 +4,7 @@ module Nat
   , isOdd
   ) where
 
-import           Data.Ratio
+import Data.Ratio ((%))
 
 data Nat
   = Z
@@ -36,7 +36,7 @@ instance Ord Nat where
 -- []
 fromNumber :: (Ord a, Num a) => a -> Nat
 fromNumber x
-  | x > 0     = S $ fromNumber $ x - 1
+  | x > 0 = S $ fromNumber $ x - 1
   | otherwise = Z
 
 toNumber :: Num a => Nat -> a
@@ -49,17 +49,12 @@ toNumber n = toNumberAcc n 0
 instance Num Nat where
   (+) Z k     = k
   (+) (S n) k = S (n + k)
-
   abs = id
-
   signum Z     = Z
   signum (S _) = S Z
-
   fromInteger = fromNumber
-
   (*) Z _     = Z
   (*) (S k) n = k * n + n
-
   (-) Z _         = Z
   (-) k Z         = k
   (-) (S k) (S n) = k - n

@@ -6,7 +6,7 @@ module Task2
   , thirdNegElim
   ) where
 
-import           Data.Void (Void)
+import Data.Void (Void)
 
 type Neg a = a -> Void
 
