@@ -28,12 +28,12 @@ library
                        Block2,
                        Nat,
                        Tree,
+                       AATree,
                        Day,
                        City,
+                       NonEmpty
                        Block4,
-                       Block5,
-                       NonEmpty,
-                       AATree
+                       Block5
   ghc-options:         -Wall
   build-depends:       base >= 4.9 && < 5
   default-language:    Haskell2010
