@@ -38,7 +38,6 @@ instance Enum Day where
            | dayNum == 4 -> Friday
            | dayNum == 5 -> Saturday
            | otherwise -> Sunday
-
   fromEnum Monday    = 0
   fromEnum Tuesday   = 1
   fromEnum Wednesday = 2
@@ -66,8 +65,9 @@ nextDays = succ
 afterDays :: (Integral t) => Day -> t -> Day
 afterDays day k =
   let dayNumber = fromEnum day
-   in let afterDayNumber = (dayNumber + fromEnum k) `mod` 7
-       in toEnum afterDayNumber
+      daysWithoutWeeks = k `mod` 7
+      afterDayNumber = (dayNumber + fromEnum daysWithoutWeeks) `mod` 7
+   in toEnum afterDayNumber
 
 isWeekend :: Day -> Bool
 isWeekend Saturday = True

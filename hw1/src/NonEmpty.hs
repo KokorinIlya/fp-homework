@@ -10,6 +10,7 @@ data NonEmpty a =
   deriving (Show)
 
 instance Eq a => Eq (NonEmpty a) where
+  (==) :: NonEmpty a -> NonEmpty a -> Bool
   (x :| xs) == (y :| ys) = (x == y) && (xs == ys)
 
 instance Foldable NonEmpty where
@@ -48,4 +49,5 @@ reverseNonEmpty (first :| (second:others)) = reverseNonEmptyAcc (second :| other
     reverseNonEmptyAcc (x :| (nextX:tailX)) (y :| accTail) = reverseNonEmptyAcc (nextX :| tailX) (x :| (y : accTail))
 
 instance Semigroup (NonEmpty a) where
-  (<>) (x :| xs) (y :| ys) = x :| (xs ++ [y] ++ ys)
+  (<>) :: NonEmpty a -> NonEmpty a -> NonEmpty a
+  (x :| xs) <> (y :| ys) = x :| (xs ++ [y] ++ ys)

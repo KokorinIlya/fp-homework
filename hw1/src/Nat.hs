@@ -13,10 +13,10 @@ data Nat
   | S Nat
 
 instance Eq Nat where
-  (==) Z Z         = True
-  (==) Z (S _)     = False
-  (==) (S _) Z     = False
-  (==) (S a) (S b) = a == b
+  Z == Z         = True
+  Z == (S _)     = False
+  (S _) == Z     = False
+  (S a) == (S b) = a == b
 
 instance Ord Nat where
   compare Z Z         = EQ
@@ -38,7 +38,7 @@ instance Ord Nat where
 -- []
 fromNumber :: (Ord a, Num a) => a -> Nat
 fromNumber x
-  | x > 0 = S $ fromNumber $ x - 1
+  | x > 0     = S $ fromNumber $ x - 1
   | otherwise = Z
 
 toNumber :: Num a => Nat -> a

@@ -13,13 +13,13 @@ module Block2
 -- Just (10,[0,1,2,3,4,5,6,7,8,9])
 -- >>> deleteByIndex 17 [0..10]
 -- Nothing
-deleteByIndex :: (Num it, Eq it) => it -> [t] -> Maybe (t, [t])
+deleteByIndex :: Int -> [t] -> Maybe (t, [t])
 deleteByIndex ind list = deleteByIndexAccum ind list []
   where
     deleteByIndexAccum :: (Num it, Eq it) => it -> [t] -> [t] -> Maybe (t, [t])
     deleteByIndexAccum _ [] _ = Nothing
     deleteByIndexAccum k (x:xs) accum
-      | k == 0 = Just (x, reverse accum ++ xs)
+      | k == 0    = Just (x, reverse accum ++ xs)
       | otherwise = deleteByIndexAccum (k - 1) xs (x : accum)
 
 -- | Returns sorted list, O(N * log N) time complexity
@@ -45,7 +45,7 @@ mergeSort list =
     mergeAcc [] l acc = reverse l ++ acc
     mergeAcc l [] acc = reverse l ++ acc
     mergeAcc first@(x:xs) second@(y:ys) acc
-      | x <= y = mergeAcc xs second (x : acc)
+      | x <= y   = mergeAcc xs second (x : acc)
       | otherwise = mergeAcc first ys (y : acc)
 
     divide :: (Num it, Eq it) => it -> [t] -> ([t], [t])
@@ -57,4 +57,4 @@ mergeSort list =
     divideAcc _ acc [] = (acc, [])
     divideAcc elementsLeft acc l@(x:xs)
       | elementsLeft == 0 = (acc, l)
-      | otherwise = divideAcc (elementsLeft - 1) (x : acc) xs
+      | otherwise         = divideAcc (elementsLeft - 1) (x : acc) xs

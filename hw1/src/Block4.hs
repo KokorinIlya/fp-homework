@@ -2,8 +2,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Block4
-  ( NonEmpty(..)
-  , Pair(..)
+  ( Pair(..)
   , joinWith
   , splitOn
   ) where
@@ -50,10 +49,9 @@ splitOn ::
 splitOn splitElem list = reverseNonEmpty $ fmap reverse (foldl processCurSymbol ([] :| []) list)
   where
     processCurSymbol :: NonEmpty [a] -> a -> NonEmpty [a]
-    processCurSymbol (x :| xs) curElem =
-      if curElem == splitElem
-        then [] :| (x : xs)
-        else (curElem : x) :| xs
+    processCurSymbol (x :| xs) curElem
+      | curElem == splitElem = [] :| (x : xs)
+      | otherwise = (curElem : x) :| xs
 
 -- | Joins non empty list, using specified element
 -- >>> joinWith '/' ("path" :| ["to", "file"])
