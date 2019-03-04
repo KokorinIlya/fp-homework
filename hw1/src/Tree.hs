@@ -51,9 +51,10 @@ fromList :: Ord a => [a] -> Tree a
 fromList = foldl insert Empty
 
 toList :: Tree a -> [a]
-toList Empty                       = []
-toList (Node left (x :| xs) right) = toList left ++ x : xs ++ toList right
-
+toList = foldr addElem []
+  where
+    addElem :: a -> [a] -> [a]
+    addElem = (:)
 instance Show a => Show (Tree a) where
   show tree = showLevel tree 0
     where
@@ -107,5 +108,5 @@ instance Foldable Tree where
   foldr _ z Empty = z
   foldr f z (Node left elems right) =
     let rightFolded = foldr f z right
-     in let elemsFolded = foldr f rightFolded elems
-         in foldr f elemsFolded left
+        elemsFolded = foldr f rightFolded elems
+     in foldr f elemsFolded left
