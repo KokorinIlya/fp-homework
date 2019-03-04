@@ -72,7 +72,7 @@ delete (AANode height left elems@(curElem :| otherElems) right) elemToDelete str
         DeleteAll -> deleteAllFromVertex height left right
         DeleteOne ->
           case otherElems of
-            []                              -> deleteAllFromVertex height left right
+            [] -> deleteAllFromVertex height left right
             (otherElemsHead:otherElemsTail) -> AANode height left (otherElemsHead :| otherElemsTail) right
 
 rebalance :: AATree a -> AATree a
@@ -146,14 +146,16 @@ instance Show a => Show (AATree a) where
       showLevel AAEmpty level = replicate level '-'
       showLevel (AANode height left (x :| xs) right) level =
         let begining = replicate level '-'
-         in let shownList = "H = " ++ show height ++ " E = " ++ show (x : xs)
-             in let shownLeft = showLevel left (level + 1)
-                 in let shownRight = showLevel right (level + 1)
-                     in begining ++ shownList ++ "\n" ++ shownLeft ++ "\n" ++ shownRight
+            shownList = "H = " ++ show height ++ " E = " ++ show (x : xs)
+            shownLeft = showLevel left (level + 1)
+            shownRight = showLevel right (level + 1)
+         in begining ++ shownList ++ "\n" ++ shownLeft ++ "\n" ++ shownRight
 
 toList :: AATree a -> [a]
-toList AAEmpty                         = []
-toList (AANode _ left (x :| xs) right) = toList left ++ x : xs ++ toList right
+toList = foldr addElem []
+  where
+    addElem :: a -> [a] -> [a]
+    addElem = (:)
 
 contains :: Ord a => AATree a -> a -> Bool
 contains AAEmpty _ = False

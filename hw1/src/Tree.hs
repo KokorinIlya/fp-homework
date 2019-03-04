@@ -55,6 +55,7 @@ toList = foldr addElem []
   where
     addElem :: a -> [a] -> [a]
     addElem = (:)
+
 instance Show a => Show (Tree a) where
   show tree = showLevel tree 0
     where
