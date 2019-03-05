@@ -51,7 +51,7 @@ splitOn splitElem list = reverseNonEmpty $ fmap reverse (foldl processCurSymbol 
     processCurSymbol :: NonEmpty [a] -> a -> NonEmpty [a]
     processCurSymbol (x :| xs) curElem
       | curElem == splitElem = [] :| (x : xs)
-      | otherwise = (curElem : x) :| xs
+      | otherwise            = (curElem : x) :| xs
 
 -- | Joins non empty list, using specified element
 -- >>> joinWith '/' ("path" :| ["to", "file"])
@@ -71,12 +71,7 @@ splitOn splitElem list = reverseNonEmpty $ fmap reverse (foldl processCurSymbol 
 -- >>> joinWith '/' ("" :| [""])
 -- "/"
 joinWith :: forall a. a -> NonEmpty [a] -> [a]
-joinWith _ (theOnly :| []) = theOnly
-joinWith elemToJoin (first :| (second:others)) = first ++ joinWithEndingElem (second :| others)
+joinWith elemToJoin (first :| others) = first ++ foldr addElem [] others
   where
-    joinWithEndingElem :: NonEmpty [a] -> [a]
-    joinWithEndingElem nonEmpty = joinWithEndingElemAcc (reverseNonEmpty nonEmpty) []
-    joinWithEndingElemAcc :: NonEmpty [a] -> [a] -> [a]
-    joinWithEndingElemAcc (x :| []) acc = elemToJoin : (x ++ acc)
-    joinWithEndingElemAcc (curList :| (nextList:otherLists)) acc =
-      joinWithEndingElemAcc (nextList :| otherLists) (elemToJoin : (curList ++ acc))
+    addElem :: [a] -> [a] -> [a]
+    addElem curElemToAdd curList = elemToJoin : (curElemToAdd ++ curList)

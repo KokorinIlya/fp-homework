@@ -11,7 +11,7 @@ import Data.Void (Void)
 type Neg a = a -> Void
 
 doubleNeg :: a -> Neg (Neg a)
-doubleNeg aValue aToVoid = aToVoid aValue
+doubleNeg = flip ($)
 
 {-
 Закон Пирса эквиваленет правилу исключённого третьего и снятию двойного отрицаия,
@@ -53,12 +53,4 @@ excludedNeg f =
    in f $ Right negA
 
 thirdNegElim :: Neg (Neg (Neg a)) -> Neg a
-thirdNegElim f aValue
-  {-
-  f :: ((a -> _|_) -> _|_) -> _|_
-  aValue :: a
-  negatedA :: (a -> _|_) -> _|_
-  -}
- =
-  let negatedA = doubleNeg aValue
-   in f negatedA
+thirdNegElim f = f . doubleNeg

@@ -1,5 +1,6 @@
 module Block5
   ( Builder(..)
+  , Endo(..)
   , Name(..)
   , ThisOrThat(..)
   , eitherConcat
@@ -39,38 +40,38 @@ data ThisOrThat a b
   deriving (Show)
 
 instance Semigroup (ThisOrThat a b) where
-  This _ <> second@(This _) = second
-  This x <> That y = Both x y
-  This _ <> second@(Both _ _) = second
-  That x <> This y = Both y x
-  That _ <> second@(That _) = second
-  That _ <> second@(Both _ _) = second
-  Both _ y <> This z = Both z y
-  Both x _ <> That z = Both x z
+  This _ <> second@(This _)     = second
+  This x <> That y              = Both x y
+  This _ <> second@(Both _ _)   = second
+  That x <> This y              = Both y x
+  That _ <> second@(That _)     = second
+  That _ <> second@(Both _ _)   = second
+  Both _ y <> This z            = Both z y
+  Both x _ <> That z            = Both x z
   Both _ _ <> second@(Both _ _) = second
 
-newtype Name =
-  Name String
+data Name
+  = Name String
+  | EmptyName
   deriving (Show)
 
 instance Semigroup Name where
-  Name first <> Name second
-    | first == "" = Name second
-    | second == "" = Name first
-    | otherwise = Name (first ++ ('.' : second))
+  Name first <> Name second    = Name $ first ++ ('.' : second)
+  EmptyName <> second          = second
+  first <> EmptyName           = first
 
 instance Monoid Name where
-  mempty = Name ""
+  mempty = EmptyName
 
 newtype Endo a = Endo
   { getEndo :: a -> a
   }
 
 instance Semigroup (Endo a) where
-  Endo {getEndo = firstEndo} <> Endo {getEndo = secondEndo} = Endo {getEndo = firstEndo . secondEndo}
+  Endo first <> Endo second = Endo $ first . second
 
 instance Monoid (Endo a) where
-  mempty = Endo {getEndo = id}
+  mempty = Endo id
 
 data Builder
   = One Char
@@ -78,11 +79,11 @@ data Builder
   deriving (Show, Eq)
 
 instance Semigroup Builder where
-  x <> Many [] = x
-  Many [] <> x = x
-  first@(One _) <> second@(One _) = Many [first, second]
-  first@(One _) <> Many (builder:builders) = Many (first : builder : builders)
-  Many list@(_:_) <> first@(One _) = Many (list ++ [first])
+  x <> Many []                                  = x
+  Many [] <> x                                  = x
+  first@(One _) <> second@(One _)               = Many [first, second]
+  first@(One _) <> Many (builder:builders)      = Many (first : builder : builders)
+  Many list@(_ : _) <> first@(One _)            = Many (list ++ [first])
   Many firstList@(_:_) <> Many secondList@(_:_) = Many (firstList ++ secondList)
 
 instance Monoid Builder where
@@ -97,7 +98,7 @@ fromString = foldr addCharToBuilder mempty
 
 -- | Gives weaker post-conditions, than <> operator, because
 -- One 'a' `fastConcat` (Many [One 'b', One 'c']
--- `fastConcat` Many [One 'd', One 'e']) != (One 'a' `fastConcat`
+-- `fastConcat` Many [One 'd', One 'e']) /= (One 'a' `fastConcat`
 -- Many [One 'b', One 'c']) `fastConcat` Many [One 'd', One 'e'],
 -- but it is faster. Post-condition is :
 -- toString $ x `fastConcat` (y `fastConcat` z) ==
@@ -109,6 +110,10 @@ fromString = foldr addCharToBuilder mempty
 -- >>> filter (\(a, b, c) -> toString ((a `fastConcat` b) `fastConcat` c) /= toString (a `fastConcat` (b `fastConcat` c))) stringTriples
 -- []
 -- >>> filter (\(a, b, c) -> (a `fastConcat` b) `fastConcat` c /=  a `fastConcat` (b `fastConcat` c)) stringTriples /= []
+-- True
+-- >>> One 'a' `fastConcat` (Many [One 'b', One 'c'] `fastConcat` Many [One 'd', One 'e']) /= (One 'a' `fastConcat` Many [One 'b', One 'c']) `fastConcat` Many [One 'd', One 'e']
+-- True
+-- >>> toString (One 'a' `fastConcat` (Many [One 'b', One 'c'] `fastConcat` Many [One 'd', One 'e'])) == toString((One 'a' `fastConcat` Many [One 'b', One 'c']) `fastConcat` Many [One 'd', One 'e'])
 -- True
 fastConcat :: Builder -> Builder -> Builder
 fastConcat x (Many [])                             = x

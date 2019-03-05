@@ -1,6 +1,6 @@
 module Task5
   ( Nat
-  , churchFromNum
+  , churchFromInteger
   , churchMult
   , churchPlus
   , churchToInt
@@ -29,10 +29,10 @@ churchPlus n m f z = n f (m f z)
 churchMult :: Nat a -> Nat a -> Nat a
 churchMult n m f = n (m f)
 
-churchFromNum :: (Num t, Eq t) => t -> Nat a
-churchFromNum n = churchFromNumAcc n zero
+churchFromInteger :: Integer -> Nat a
+churchFromInteger n = churchFromIntegerAcc n zero
   where
-    churchFromNumAcc :: (Num t, Eq t) => t -> Nat a -> Nat a
-    churchFromNumAcc m acc
-      | m == 0 = acc
-      | otherwise = churchFromNumAcc (m - 1) (\f -> f . acc f)
+    churchFromIntegerAcc :: Integer -> Nat a -> Nat a
+    churchFromIntegerAcc m acc
+      | m > 0     = churchFromIntegerAcc (m - 1) (\f -> f . acc f)
+      | otherwise = acc

@@ -13,9 +13,9 @@ data Nat
   | S Nat
 
 instance Eq Nat where
-  Z == Z = True
-  Z == (S _) = False
-  (S _) == Z = False
+  Z == Z         = True
+  Z == (S _)     = False
+  (S _) == Z     = False
   (S a) == (S b) = a == b
 
 instance Ord Nat where

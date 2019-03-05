@@ -165,9 +165,9 @@ instance Eq AddLordError where
 addLord :: City -> LordName -> Either AddLordError City
 addLord city newLord =
   case castle city of
-    Nothing                                   -> Left CannotAddLordNeedCastle
+    Nothing -> Left CannotAddLordNeedCastle
     (Just cityCastle@Castle {lord = Nothing}) -> Right city {castle = Just $ cityCastle {lord = Just newLord}}
-    (Just Castle {lord = Just cityLord})      -> Left $ LordIsAlreadyPresent cityLord
+    (Just Castle {lord = Just cityLord}) -> Left $ LordIsAlreadyPresent cityLord
 
 data BuildWallsError
   = CannotBuildWallsNeedCastle
@@ -200,13 +200,11 @@ instance Eq BuildWallsError where
 -- >>> buildWall normalCity == Right (normalCity { castle = Just newCastle } )
 -- True
 buildWall :: City -> Either BuildWallsError City
-buildWall city@City {houses = house :| otherHouses, castle = maybeCastle} =
-  if atLeast10People
-    then case maybeCastle of
-           Nothing                                    -> Left CannotBuildWallsNeedCastle
-           (Just cityCastle@Castle {walls = Nothing}) -> Right city {castle = Just $ cityCastle {walls = Just Walls}}
-           (Just Castle {walls = Just _})             -> Left AlreadyHasWalls
-    else Left LessThen10People
+buildWall City {castle = Nothing} = Left CannotBuildWallsNeedCastle
+buildWall City {castle = Just Castle {walls = Just Walls}} = Left AlreadyHasWalls
+buildWall city@City {houses = house :| otherHouses, castle = Just cityCastle@Castle {walls = Nothing}}
+  | atLeast10People = Right city {castle = Just $ cityCastle {walls = Just Walls}}
+  | otherwise       = Left LessThen10People
   where
     atLeast10People :: Bool
     atLeast10People = peopleCountAcc (house : otherHouses) 0 >= 10

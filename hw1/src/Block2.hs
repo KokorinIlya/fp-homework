@@ -31,6 +31,8 @@ deleteByIndex ind list = deleteByIndexAccum ind list []
 -- [-2,1,3,5,17,89]
 -- >>> mergeSort [5,1,-2,4,1]
 -- [-2,1,1,4,5]
+-- >>> mergeSort [5,7,0,-1,-3,1,5,99,1,1]
+-- [-3,-1,0,1,1,1,5,5,7,99]
 mergeSort :: Ord t => [t] -> [t]
 mergeSort [] = []
 mergeSort [x] = [x]
@@ -40,18 +42,21 @@ mergeSort list =
   where
     merge :: Ord t => [t] -> [t] -> [t]
     merge xs ys = reverse $ mergeAcc xs ys []
+
     mergeAcc :: Ord t => [t] -> [t] -> [t] -> [t]
-    mergeAcc [] l acc = reverse l ++ acc
-    mergeAcc l [] acc = reverse l ++ acc
+    mergeAcc [] second acc = reverse second ++ acc
+    mergeAcc first [] acc  = reverse first ++ acc
     mergeAcc first@(x:xs) second@(y:ys) acc
-      | x <= y = mergeAcc xs second (x : acc)
+      | x <= y    = mergeAcc xs second (x : acc)
       | otherwise = mergeAcc first ys (y : acc)
-    divide :: (Num it, Eq it) => it -> [t] -> ([t], [t])
+
+    divide :: Int -> [t] -> ([t], [t])
     divide elementsToCut l =
       let (left, right) = divideAcc elementsToCut [] l
        in (reverse left, right)
-    divideAcc :: (Num it, Eq it) => it -> [t] -> [t] -> ([t], [t])
+
+    divideAcc :: Int -> [t] -> [t] -> ([t], [t])
     divideAcc _ acc [] = (acc, [])
     divideAcc elementsLeft acc l@(x:xs)
-      | elementsLeft == 0 = (acc, l)
-      | otherwise = divideAcc (elementsLeft - 1) (x : acc) xs
+      | elementsLeft > 0 = divideAcc (elementsLeft - 1) (x : acc) xs
+      | otherwise        = (acc, l)

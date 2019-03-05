@@ -5,6 +5,7 @@ module AATree
   , DeleteStrategy(..)
   , contains
   , deleteAllFromVertex
+  , find
   , fromList
   , insert
   , isEmpty
@@ -40,6 +41,11 @@ split orig@(AANode height left elems (AANode rightHeight rightLeft rightElems ri
      in AANode (rightHeight + 1) newLeft rightElems rightRight
   | otherwise = orig
 
+-- | Returns tree with specified element inserted
+-- >>> toList $ insert AAEmpty 3
+-- [3]
+-- >>> toList $ insert (fromList [1,7,3]) 3
+-- [1,3,3,7]
 insert :: Ord a => AATree a -> a -> AATree a
 insert AAEmpty elemToInsert = AANode 1 AAEmpty (elemToInsert :| []) AAEmpty
 insert (AANode height left elems@(curElem :| otherElems) right) elemToInsert =
@@ -57,6 +63,17 @@ data DeleteStrategy
   | DeleteAll
   deriving (Show)
 
+-- | Deletes specified element from tree. If DeleteStrategy is DeleteOne, deletes only one element.
+-- Otherwise, deletes all elements, that are equal to the specified.
+-- If tree doesn't contain specified element, returns tree unchanged.
+-- >>> toList $ delete (fromList [1,7,3,3]) 3 DeleteOne
+-- [1,3,7]
+-- >>> toList $ delete (fromList [1,7,3,3]) 3 DeleteAll
+-- [1,7]
+-- >>> toList $ delete (fromList [1,7]) 3 DeleteOne
+-- [1,7]
+-- >>> toList $ delete (fromList [1,7,3]) 3 DeleteOne
+-- [1,7]
 delete :: Ord a => AATree a -> a -> DeleteStrategy -> AATree a
 delete AAEmpty _ _ = AAEmpty
 delete (AANode height left elems@(curElem :| otherElems) right) elemToDelete strategy =
@@ -72,7 +89,7 @@ delete (AANode height left elems@(curElem :| otherElems) right) elemToDelete str
         DeleteAll -> deleteAllFromVertex height left right
         DeleteOne ->
           case otherElems of
-            [] -> deleteAllFromVertex height left right
+            []                             -> deleteAllFromVertex height left right
             (otherElemsHead:otherElemsTail) -> AANode height left (otherElemsHead :| otherElemsTail) right
 
 rebalance :: AATree a -> AATree a
@@ -154,13 +171,16 @@ instance Show a => Show (AATree a) where
 toList :: AATree a -> [a]
 toList = foldr (:) []
 
-contains :: Ord a => AATree a -> a -> Bool
-contains AAEmpty _ = False
-contains (AANode _ left (x :| _) right) elemToFind =
+find :: Ord a => AATree a -> a -> Maybe (NonEmpty a)
+find AAEmpty _ = Nothing
+find (AANode _ left elems@(x :| _) right) elemToFind =
   case compare elemToFind x of
-    LT -> contains left elemToFind
-    EQ -> True
-    GT -> contains right elemToFind
+    LT -> find left elemToFind
+    EQ -> Just elems
+    GT -> find right elemToFind
+
+contains :: Ord a => AATree a -> a -> Bool
+contains tree elemToFind = not $ null $ find tree elemToFind
 
 isEmpty :: AATree a -> Bool
 isEmpty AAEmpty = True
@@ -182,5 +202,5 @@ instance Foldable AATree where
   foldr _ z AAEmpty = z
   foldr f z (AANode _ left elems right) =
     let rightFolded = foldr f z right
-     in let elemsFolded = foldr f rightFolded elems
-         in foldr f elemsFolded left
+        elemsFolded = foldr f rightFolded elems
+     in foldr f elemsFolded left

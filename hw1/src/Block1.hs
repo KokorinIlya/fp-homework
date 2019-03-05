@@ -35,15 +35,15 @@ smartReplicate list = reverse $ smartReplicateAccum list []
   where
     smartReplicateAccum :: (Num t, Ord t) => [t] -> [t] -> [t]
     smartReplicateAccum [] acc           = acc
-    smartReplicateAccum (num : nums) acc = smartReplicateAccum nums (replicateNumTimes num ++ acc)
+    smartReplicateAccum (num : nums) acc = smartReplicateAccum nums (addNumTimes num acc)
 
-    replicateNumTimes :: (Num t, Ord t) => t -> [t]
-    replicateNumTimes n = replicateNumTimesAccum n n []
+    addNumTimes :: (Num t, Ord t) => t -> [t] -> [t]
+    addNumTimes num = addRemainingTimesAcc num num
 
-    replicateNumTimesAccum :: (Num t, Ord t) => t -> t -> [t] -> [t]
-    replicateNumTimesAccum n k acc
-      | k > 0     = replicateNumTimesAccum n (k - 1) (n : acc)
-      | otherwise = acc
+    addRemainingTimesAcc :: (Num t, Ord t) => t -> t -> [t] -> [t]
+    addRemainingTimesAcc num remaining acc
+      | remaining > 0 = addRemainingTimesAcc num (remaining - 1) (num : acc)
+      | otherwise     = acc
 
 -- | returns only lists, containing specified element
 -- >>> contains 3 [[1..5], [2,0], [3,4]]
@@ -55,10 +55,9 @@ contains e listOflists = containsAccum e listOflists []
   where
     containsAccum :: Eq t => t -> [[t]] -> [[t]] -> [[t]]
     containsAccum _ [] acc = reverse acc
-    containsAccum element (list:lists) acc =
-      if listContains element list
-        then containsAccum element lists (list : acc)
-        else containsAccum element lists acc
+    containsAccum element (list:lists) acc
+      | listContains element list = containsAccum element lists (list : acc)
+      | otherwise                 = containsAccum element lists acc
 
     listContains :: Eq t => t -> [t] -> Bool
     listContains _ []                    = False

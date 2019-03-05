@@ -4,6 +4,7 @@ module Tree
   ( Tree
   , contains
   , delete
+  , find
   , fromList
   , insert
   , isEmpty
@@ -27,13 +28,16 @@ size :: Tree a -> Int
 size Empty                   = 0
 size (Node left elems right) = size left + length elems + size right
 
-contains :: Ord a => Tree a -> a -> Bool
-contains Empty _ = False
-contains (Node left (x :| _) right) elemToFind =
+find :: Ord a => Tree a -> a -> Maybe (NonEmpty a)
+find Empty _ = Nothing
+find (Node left elems@(x :| _) right) elemToFind =
   case compare elemToFind x of
-    LT -> contains left elemToFind
-    EQ -> True
-    GT -> contains right elemToFind
+    LT -> find left elemToFind
+    EQ -> Just elems
+    GT -> find right elemToFind
+
+contains :: Ord a => Tree a -> a -> Bool
+contains tree elemToFind = not $ null $ find tree elemToFind
 
 insert :: Ord a => Tree a -> a -> Tree a
 insert Empty elemToInsert = Node Empty (elemToInsert :| []) Empty

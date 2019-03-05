@@ -62,6 +62,8 @@ nextDays = succ
 -- True
 -- >>> afterDays Sunday 7000001
 -- Monday
+-- >>> filter (\d -> afterDays d 7000001 /= nextDays d) (map toEnum [0..6])
+-- []
 afterDays :: (Integral t) => Day -> t -> Day
 afterDays day k =
   let dayNumber = fromEnum day
@@ -74,11 +76,21 @@ isWeekend Saturday = True
 isWeekend Sunday   = True
 isWeekend _        = False
 
+-- | Calculates number of days before Friday
+-- >>> daysToParty Monday
+-- 4
+-- >>> daysToParty Tuesday
+-- 3
+-- >>> daysToParty Wednesday
+-- 2
+-- >>> daysToParty Thursday
+-- 1
+-- >>> daysToParty Friday
+-- 0
+-- >>> daysToParty Saturday
+-- 6
+-- >>> daysToParty Sunday
+-- 5
 daysToParty :: Day -> Int
-daysToParty Monday    = 4
-daysToParty Tuesday   = 3
-daysToParty Wednesday = 2
-daysToParty Thursday  = 1
-daysToParty Friday    = 0
-daysToParty Saturday  = 6
-daysToParty Sunday    = 5
+daysToParty Friday   = 0
+daysToParty otherDay = 1 + daysToParty (nextDays otherDay)

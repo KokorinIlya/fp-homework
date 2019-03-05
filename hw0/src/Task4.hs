@@ -14,7 +14,7 @@ factorial n = factorialAccum n 1
     factorialAccum = fix prefact
     prefact :: (Integer -> Integer -> Integer) -> Integer -> Integer -> Integer
     prefact f m acc
-      | m <= 1 = acc
+      | m <= 1    = acc
       | otherwise = f (m - 1) (acc * m)
 
 iterateElement :: a -> [a]
@@ -43,6 +43,7 @@ mapFix g l = reverseList $ mapFixAccum g l []
     preMapFix :: ((a -> b) -> [a] -> [b] -> [b]) -> (a -> b) -> [a] -> [b] -> [b]
     preMapFix _ _ [] acc          = acc
     preMapFix f mapper (x:xs) acc = f mapper xs (mapper x : acc)
+
     reverseList :: [a] -> [a]
     reverseList list = reverseAccum list []
     reverseAccum :: [a] -> [a] -> [a]
