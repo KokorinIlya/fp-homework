@@ -57,7 +57,7 @@ instance Semigroup Name where
   Name first <> Name second
     | first == "" = Name second
     | second == "" = Name first
-    | otherwise = Name (first ++ "." ++ second)
+    | otherwise = Name (first ++ ('.' : second))
 
 instance Monoid Name where
   mempty = Name ""

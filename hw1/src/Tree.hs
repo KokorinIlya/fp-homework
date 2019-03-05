@@ -51,10 +51,7 @@ fromList :: Ord a => [a] -> Tree a
 fromList = foldl insert Empty
 
 toList :: Tree a -> [a]
-toList = foldr addElem []
-  where
-    addElem :: a -> [a] -> [a]
-    addElem = (:)
+toList = foldr (:) []
 
 instance Show a => Show (Tree a) where
   show tree = showLevel tree 0

@@ -152,10 +152,7 @@ instance Show a => Show (AATree a) where
          in begining ++ shownList ++ "\n" ++ shownLeft ++ "\n" ++ shownRight
 
 toList :: AATree a -> [a]
-toList = foldr addElem []
-  where
-    addElem :: a -> [a] -> [a]
-    addElem = (:)
+toList = foldr (:) []
 
 contains :: Ord a => AATree a -> a -> Bool
 contains AAEmpty _ = False

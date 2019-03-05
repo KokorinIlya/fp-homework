@@ -37,7 +37,7 @@ instance Enum Day where
            | dayNum == 3 -> Thursday
            | dayNum == 4 -> Friday
            | dayNum == 5 -> Saturday
-           | otherwise -> Sunday
+           | otherwise   -> Sunday
   fromEnum Monday    = 0
   fromEnum Tuesday   = 1
   fromEnum Wednesday = 2

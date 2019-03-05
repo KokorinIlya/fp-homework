@@ -13,9 +13,9 @@ data Nat
   | S Nat
 
 instance Eq Nat where
-  Z == Z         = True
-  Z == (S _)     = False
-  (S _) == Z     = False
+  Z == Z = True
+  Z == (S _) = False
+  (S _) == Z = False
   (S a) == (S b) = a == b
 
 instance Ord Nat where
@@ -70,8 +70,9 @@ instance Show Nat where
 -- >>> isEven $ S $ S $ S $ Z
 -- False
 isEven :: Nat -> Bool
-isEven Z     = True
-isEven (S k) = not $ isEven k
+isEven Z         = True
+isEven (S Z)     = False
+isEven (S (S k)) = isEven k
 
 -- | Tests, if number is odd
 -- >>> isOdd $ S $ S $ S $ S $ Z
