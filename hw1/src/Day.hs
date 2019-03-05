@@ -1,5 +1,3 @@
-{-# LANGUAGE MultiWayIf #-}
-
 module Day
   ( Day(..)
   , afterDays
@@ -30,14 +28,14 @@ instance Eq Day where
 
 instance Enum Day where
   toEnum num =
-    let dayNum = (num `mod` 7)
-     in if | dayNum == 0 -> Monday
-           | dayNum == 1 -> Tuesday
-           | dayNum == 2 -> Wednesday
-           | dayNum == 3 -> Thursday
-           | dayNum == 4 -> Friday
-           | dayNum == 5 -> Saturday
-           | otherwise   -> Sunday
+    case num `mod` 7 of
+      0 -> Monday
+      1 -> Tuesday
+      2 -> Wednesday
+      3 -> Thursday
+      4 -> Friday
+      5 -> Saturday
+      _ -> Sunday
   fromEnum Monday    = 0
   fromEnum Tuesday   = 1
   fromEnum Wednesday = 2
@@ -63,6 +61,8 @@ nextDays = succ
 -- >>> afterDays Sunday 7000001
 -- Monday
 -- >>> filter (\d -> afterDays d 7000001 /= nextDays d) (map toEnum [0..6])
+-- []
+-- >>> filter (\d -> afterDays d 7000002 /= nextDays (nextDays d)) (map toEnum [0..6])
 -- []
 afterDays :: (Integral t) => Day -> t -> Day
 afterDays day k =
