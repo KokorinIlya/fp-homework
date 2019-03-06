@@ -35,8 +35,7 @@ eitherConcat = foldMap processElem
 data ThisOrThat a b
   = This a
   | That b
-  | Both a
-         b
+  | Both a b
   deriving (Show)
 
 instance Semigroup (ThisOrThat a b) where
@@ -76,7 +75,13 @@ instance Monoid (Endo a) where
 data Builder
   = One Char
   | Many [Builder]
-  deriving (Show, Eq)
+  deriving (Show)
+
+instance Eq Builder where
+  One firstChar == One secondChar   = firstChar == secondChar
+  One _ == Many _                   = False
+  Many _ == One _                   = False
+  Many firstList == Many secondList = firstList == secondList
 
 instance Semigroup Builder where
   x <> Many []                                  = x

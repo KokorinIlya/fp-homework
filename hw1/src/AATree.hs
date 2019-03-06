@@ -17,10 +17,7 @@ import NonEmpty (NonEmpty (..))
 
 data AATree a
   = AAEmpty
-  | AANode Int
-           (AATree a)
-           (NonEmpty a)
-           (AATree a)
+  | AANode Int (AATree a) (NonEmpty a) (AATree a)
 
 skew :: AATree a -> AATree a
 skew AAEmpty = AAEmpty

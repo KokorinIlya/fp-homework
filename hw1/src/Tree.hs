@@ -16,9 +16,7 @@ import NonEmpty (NonEmpty (..))
 
 data Tree a
   = Empty
-  | Node (Tree a)
-         (NonEmpty a)
-         (Tree a)
+  | Node (Tree a) (NonEmpty a) (Tree a)
 
 isEmpty :: Tree a -> Bool
 isEmpty Empty = True

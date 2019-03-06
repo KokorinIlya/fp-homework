@@ -9,9 +9,7 @@ module Block4
 
 import NonEmpty (NonEmpty (..), reverseNonEmpty)
 
-data Pair a =
-  Pair a
-       a
+data Pair a = Pair a a
 
 instance Foldable Pair where
   foldMap :: Monoid m => (a -> m) -> Pair a -> m

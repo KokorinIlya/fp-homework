@@ -24,16 +24,17 @@ custom-setup
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Block1,
-                       Block2,
-                       Nat,
-                       Tree,
-                       AATree,
-                       Day,
-                       City,
-                       NonEmpty
-                       Block4,
-                       Block5
+  exposed-modules:
+      AATree
+    , Block1
+    , Block2
+    , Block4
+    , Block5
+    , City
+    , Day
+    , Nat
+    , NonEmpty
+    , Tree
   ghc-options:         -Wall
   build-depends:       base >= 4.9 && < 5,
                        random

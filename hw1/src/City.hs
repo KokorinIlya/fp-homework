@@ -70,8 +70,7 @@ newtype LordName =
 instance Eq LordName where
   (LordName firstLordName) == (LordName secondLordName) = firstLordName == secondLordName
 
-data Walls =
-  Walls
+data Walls = Walls
   deriving (Show)
 
 instance Eq Walls where
@@ -85,8 +84,7 @@ data Castle = Castle
 instance Eq Castle where
   firstCastle == secondCastle = (lord firstCastle == lord secondCastle) && (walls firstCastle == walls secondCastle)
 
-data CastleBuildingError =
-  CastleIsAlreadyBuild
+data CastleBuildingError = CastleIsAlreadyBuild
   deriving (Show)
 
 instance Eq CastleBuildingError where
