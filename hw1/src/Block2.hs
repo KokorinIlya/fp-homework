@@ -1,7 +1,13 @@
 module Block2
   ( deleteByIndex
   , mergeSort
+  , randomIntList
   ) where
+
+import System.Random (newStdGen, randomRs)
+
+randomIntList :: Int -> Int -> Int -> IO [Int]
+randomIntList n from to = take n . randomRs (from, to) <$> newStdGen
 
 -- | if length of list is less then given index, returns element
 -- by given index and list without this element, otherwise, returns None

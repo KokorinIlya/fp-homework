@@ -89,7 +89,7 @@ delete (AANode height left elems@(curElem :| otherElems) right) elemToDelete str
         DeleteAll -> deleteAllFromVertex height left right
         DeleteOne ->
           case otherElems of
-            []                             -> deleteAllFromVertex height left right
+            []                              -> deleteAllFromVertex height left right
             (otherElemsHead:otherElemsTail) -> AANode height left (otherElemsHead :| otherElemsTail) right
 
 rebalance :: AATree a -> AATree a

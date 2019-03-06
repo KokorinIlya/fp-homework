@@ -82,7 +82,7 @@ instance Semigroup Builder where
   x <> Many []                                  = x
   Many [] <> x                                  = x
   first@(One _) <> second@(One _)               = Many [first, second]
-  first@(One _) <> Many (builder:builders)      = Many (first : builder : builders)
+  first@(One _) <> Many list@(_ : _)            = Many (first : list)
   Many list@(_ : _) <> first@(One _)            = Many (list ++ [first])
   Many firstList@(_:_) <> Many secondList@(_:_) = Many (firstList ++ secondList)
 

@@ -18,10 +18,10 @@ instance Foldable NonEmpty where
   foldMap toMonoidMapper nonEmpty = foldMapAcc toMonoidMapper nonEmpty mempty
     where
       foldMapAcc :: Monoid m => (a -> m) -> NonEmpty a -> m -> m
-      foldMapAcc mapper (x :| []) acc = mapper x <> acc
+      foldMapAcc mapper (x :| []) acc     = mapper x <> acc
       foldMapAcc mapper (x :| (y:ys)) acc = foldMapAcc mapper (y :| ys) (mapper x <> acc)
   foldr :: (a -> b -> b) -> b -> NonEmpty a -> b
-  foldr function rightOne (x :| []) = function x rightOne
+  foldr function rightOne (x :| [])     = function x rightOne
   foldr function rightOne (x :| (y:ys)) = foldrAcc function rightOne (y :| ys) (function x)
     where
       foldrAcc :: (a -> b -> b) -> b -> NonEmpty a -> (b -> b) -> b

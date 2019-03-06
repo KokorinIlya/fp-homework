@@ -37,10 +37,10 @@ data ChurchOrLibrary
   deriving (Show)
 
 instance Eq ChurchOrLibrary where
-  Church == Church = True
+  Church == Church   = True
   Library == Library = True
   Neither == Neither = True
-  _ == _ = False
+  _ == _             = False
 
 data Family
   = Single
@@ -51,10 +51,10 @@ data Family
 
 instance Eq Family where
   Single == Single = True
-  Two == Two = True
-  Three == Three = True
-  Four == Four = True
-  _ == _ = False
+  Two == Two       = True
+  Three == Three   = True
+  Four == Four     = True
+  _ == _           = False
 
 newtype House =
   House Family
@@ -102,10 +102,8 @@ instance Eq CastleBuildingError where
 -- >>> buildCastle cityWithCastle someCastle == Left CastleIsAlreadyBuild
 -- True
 buildCastle :: City -> Castle -> Either CastleBuildingError City
-buildCastle city newCastle =
-  case castle city of
-    Nothing -> Right (city {castle = Just newCastle})
-    Just _  -> Left CastleIsAlreadyBuild
+buildCastle City {castle = Just _} _               = Left CastleIsAlreadyBuild
+buildCastle city@City {castle = Nothing} newCastle = Right (city {castle = Just newCastle})
 
 data BuildChurchOrLibraryError
   = LibraryAlreadyBuilt
@@ -114,8 +112,8 @@ data BuildChurchOrLibraryError
 
 instance Eq BuildChurchOrLibraryError where
   LibraryAlreadyBuilt == LibraryAlreadyBuilt = True
-  ChurchAlreadyBuilt == ChurchAlreadyBuilt = True
-  _ == _ = False
+  ChurchAlreadyBuilt == ChurchAlreadyBuilt   = True
+  _ == _                                     = False
 
 -- | Builds church or library, if neither church nor library has been built
 -- >>> let cityWithout = City { churchOrLibrary = Neither, houses = House Single :| [], castle = Nothing}
@@ -128,11 +126,9 @@ instance Eq BuildChurchOrLibraryError where
 -- >>> buildChurchOrLibrary cityWithLibrary Library == Left LibraryAlreadyBuilt
 -- True
 buildChurchOrLibrary :: City -> ChurchOrLibrary -> Either BuildChurchOrLibraryError City
-buildChurchOrLibrary city toBuild =
-  case churchOrLibrary city of
-    Neither -> Right city {churchOrLibrary = toBuild}
-    Church  -> Left ChurchAlreadyBuilt
-    Library -> Left LibraryAlreadyBuilt
+buildChurchOrLibrary City {churchOrLibrary = Church} _             = Left ChurchAlreadyBuilt
+buildChurchOrLibrary City {churchOrLibrary = Library} _            = Left LibraryAlreadyBuilt
+buildChurchOrLibrary city@City {churchOrLibrary = Neither} toBuild = Right city {churchOrLibrary = toBuild}
 
 -- | Returns city with one more house for a given family built
 buildHouse :: City -> Family -> City
@@ -145,8 +141,8 @@ data AddLordError
 
 instance Eq AddLordError where
   (LordIsAlreadyPresent firstLordName) == (LordIsAlreadyPresent secondLordName) = firstLordName == secondLordName
-  CannotAddLordNeedCastle == CannotAddLordNeedCastle = True
-  _ == _ = False
+  CannotAddLordNeedCastle == CannotAddLordNeedCastle                            = True
+  _ == _                                                                        = False
 
 -- | Add lord to the city, if there is a castle, and no lord.
 -- >>> let cityHouses = House Single :| []
@@ -163,11 +159,10 @@ instance Eq AddLordError where
 -- >>> addLord city (LordName "lord") == Right (city { castle = Just newCastle })
 -- True
 addLord :: City -> LordName -> Either AddLordError City
-addLord city newLord =
-  case castle city of
-    Nothing -> Left CannotAddLordNeedCastle
-    (Just cityCastle@Castle {lord = Nothing}) -> Right city {castle = Just $ cityCastle {lord = Just newLord}}
-    (Just Castle {lord = Just cityLord}) -> Left $ LordIsAlreadyPresent cityLord
+addLord City {castle = Nothing} _                            = Left CannotAddLordNeedCastle
+addLord City {castle = Just Castle {lord = Just cityLord}} _ = Left $ LordIsAlreadyPresent cityLord
+addLord city@City {castle = Just cityCastle@Castle {lord = Nothing}} newLord
+ = Right city {castle = Just $ cityCastle {lord = Just newLord}}
 
 data BuildWallsError
   = CannotBuildWallsNeedCastle
@@ -177,9 +172,9 @@ data BuildWallsError
 
 instance Eq BuildWallsError where
   CannotBuildWallsNeedCastle == CannotBuildWallsNeedCastle = True
-  LessThen10People == LessThen10People = True
-  AlreadyHasWalls == AlreadyHasWalls = True
-  _ == _ = False
+  LessThen10People == LessThen10People                     = True
+  AlreadyHasWalls == AlreadyHasWalls                       = True
+  _ == _                                                   = False
 
 -- | Makes city great again and builds walls, if possible
 -- >>> let cityHouses = House Four :| [House Four, House Four]
@@ -202,17 +197,14 @@ instance Eq BuildWallsError where
 buildWall :: City -> Either BuildWallsError City
 buildWall City {castle = Nothing} = Left CannotBuildWallsNeedCastle
 buildWall City {castle = Just Castle {walls = Just Walls}} = Left AlreadyHasWalls
-buildWall city@City {houses = house :| otherHouses, castle = Just cityCastle@Castle {walls = Nothing}}
+buildWall city@City {houses = cityHouses, castle = Just cityCastle@Castle {walls = Nothing}}
   | atLeast10People = Right city {castle = Just $ cityCastle {walls = Just Walls}}
   | otherwise       = Left LessThen10People
   where
     atLeast10People :: Bool
-    atLeast10People = peopleCountAcc (house : otherHouses) 0 >= 10
-    peopleCountAcc :: [House] -> Int -> Int
-    peopleCountAcc [] acc = acc
-    peopleCountAcc (House family:housesTail) acc = peopleCountAcc housesTail (countPeople family + acc)
-    countPeople :: Family -> Int
-    countPeople Single = 1
-    countPeople Two    = 2
-    countPeople Three  = 3
-    countPeople Four   = 4
+    atLeast10People = sum (fmap countPeople cityHouses) >= 10
+    countPeople :: House -> Int
+    countPeople (House Single) = 1
+    countPeople (House Two)    = 2
+    countPeople (House Three)  = 3
+    countPeople (House Four)   = 4

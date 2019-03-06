@@ -83,7 +83,7 @@ delete (Node left l@(x :| xs) right) elemToDelete =
             Empty -> right
             Node leftLeft leftList leftRight ->
               case right of
-                Empty -> left
+                Empty   -> left
                 Node {} ->
                   let (leftMax, newLeft) = extractMax leftLeft leftList leftRight
                    in Node newLeft leftMax right

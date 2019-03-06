@@ -57,7 +57,7 @@ second :: [(Integer, Integer)]
 second = (f :: [Either Integer Integer] -> [(Integer, Integer)]) (list :: [Either Integer Integer])
   where
     f :: [Either Integer Integer] -> [(Integer, Integer)]
-    f = \x -> ((zip :: [Integer] -> [Integer] -> [(Integer, Integer)]) (lefts x :: [Integer]) :: [Integer] -> [(Integer, Integer)]) (rights x :: [Integer])
+    f = \x -> ((zip :: [Integer] -> [Integer] -> [(Integer, Integer)]) ((lefts :: [Either a b] -> [a]) (x :: [Either Integer Integer]) :: [Integer]) :: [Integer] -> [(Integer, Integer)]) ((rights :: [Either a b] -> [b]) (x :: [Either Integer Integer]) :: [Integer])
 
     list :: [Either Integer Integer]
     list = [left :: Either Integer b, right :: Either a Integer]
