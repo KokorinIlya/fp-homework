@@ -1,14 +1,16 @@
 module Task1Spec
   ( stringSumSpec
+  , treeSpec
+  , nonEmptySpec
   ) where
 
 import Test.Hspec (describe, it, SpecWith, shouldBe)
 import Test.QuickCheck (property)
-import Task1 (stringSum)
+import Block1 (stringSum, Tree (..), NonEmpty (..))
 
 stringSumSpec :: SpecWith ()
 stringSumSpec =
-  describe "Task1.stringSum" $ do
+  describe "Block1.stringSum" $ do
     it "calculates sum, when there are only numbers in string" $ do
       ((stringSum "1 2 3") :: Maybe Int) `shouldBe` (Just 6)
 
@@ -30,4 +32,51 @@ stringSumSpec =
       let stringWithNumbers = foldr (\number acc -> show number ++ " " ++ acc) "" numbers in
       stringSum stringWithNumbers == Just (sum numbers)
 
+treeSpec :: SpecWith ()
+treeSpec =
+  describe "Block1.Tree" $ do
+    it "calculates foldr from right to left" $ do
+      let tree = Branch (Branch (Leaf 1) (Branch (Leaf 2) (Leaf 3))) (Branch (Leaf 4) (Leaf 5))
+       in (foldr (\cur acc -> acc * 10 + cur) 0 tree) `shouldBe` (54321 :: Int)
 
+    it "calculates foldl from left to right" $ do
+      let tree = Branch (Branch (Leaf 1) (Branch (Leaf 2) (Branch (Leaf 3) (Leaf 4)))) (Branch (Leaf 5) (Leaf 6))
+       in (foldl (\acc cur -> acc * 10 + cur) 0 tree) `shouldBe` (123456 :: Int)
+
+nonEmptySpec :: SpecWith ()
+nonEmptySpec =
+  describe "Block1.NonEmpty" $ do
+    it "calculates fmap like non empty list" $ do
+     property checkFmap
+
+    it "calculates <*> like non empty list" $ do
+      let xs :: [Integer]
+          xs = [(+ 2), (* 3), (1 -), (`subtract` 4)] <*> [1, 3, 3, 7]
+          y :: Integer
+          ys :: [Integer]
+          (y :| ys) = (+ 2) :| [(* 3), (1 -), (`subtract` 4)] <*> 1 :| [3, 3, 7]
+       in (y : ys) `shouldBe` xs
+
+    it "calculates >>= like non empty list" $ do
+      let xs :: [Int]
+          xs = [2, 5, 1, 7, 1, 3, 3, 7] >>= (\x -> replicate x x)
+          y :: Int
+          ys :: [Int]
+          (y :| ys) = 2 :| [5, 1, 7, 1, 3, 3, 7] >>= (\x -> x :| replicate (x - 1) x)
+       in (y : ys) `shouldBe` xs
+
+    it "calculates foldr like foldr for non empty list" $ do
+      foldr (\cur acc -> acc * 10 + cur) 0 (1 :| [2, 3, 4, 5]) `shouldBe` (54321 :: Int)
+
+    it "calculates foldl like foldr for non empty list" $ do
+      foldl (\acc cur -> acc * 10 + cur) 0 (1 :| [2, 3, 4, 5]) `shouldBe` (12345 :: Int)
+
+  where
+    checkFmap :: Int -> [Int] -> Bool
+    checkFmap x xs = all (checkFmapForOne x xs) [(+ 2), (* 3), (1 -), (`subtract` 4)]
+
+    checkFmapForOne :: Int -> [Int] -> (Int -> Int) -> Bool
+    checkFmapForOne x xs f =
+      let mappedList = fmap f (x : xs)
+          (y :| ys) = fmap f (x :| xs)
+       in (mappedList == y : ys)

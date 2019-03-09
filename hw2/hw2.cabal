@@ -19,10 +19,11 @@ tested-with:         GHC == 8.0.1
 library
   hs-source-dirs:      src
   exposed-modules:
-        Task1
-      --, Block1
+        Block1
+      , Block3
   ghc-options:         -Wall
-  build-depends:       base >= 4.9 && < 5
+  build-depends:       base >= 4.9 && < 5,
+                       mtl
   default-language:    Haskell2010
 
 test-suite doctests
@@ -36,6 +37,7 @@ test-suite doctests
 
   other-modules:
         Task1Spec
+      , Task3Spec
 
   ghc-options:      -Wall -threaded
   hs-source-dirs:   test
