@@ -5,6 +5,7 @@ module Main
 import Block1Spec (nonEmptySpec, stringSumSpec, treeSpec)
 import Block3Spec (correctBracketSequenceSpec, elementParserSpec, eofParserSpec, numberParserSpec,
                   numbersListsParserSpec, okParserSpec, satisfyParserSpec, streamParserSpec)
+import Block2Spec (evalSpec, movingAverageSpec)
 import BonusBlockSpec (contSpec, monadContSpec, trivialContSpec)
 import Test.Hspec (hspec)
 
@@ -25,3 +26,5 @@ main =
     BonusBlockSpec.trivialContSpec
     BonusBlockSpec.contSpec
     BonusBlockSpec.monadContSpec
+    Block2Spec.movingAverageSpec
+    Block2Spec.evalSpec

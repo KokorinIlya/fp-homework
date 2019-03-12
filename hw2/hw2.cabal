@@ -42,6 +42,7 @@ test-suite doctests
 
   other-modules:
         Block1Spec
+      , Block2Spec
       , Block3Spec
       , BonusBlockSpec
   ghc-options:      -Wall -threaded

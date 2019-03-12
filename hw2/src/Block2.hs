@@ -11,8 +11,8 @@ module Block2
   , push
   ) where
 
+import Control.Monad.State (State, runState, state)
 import Data.Maybe (fromMaybe)
-import Control.Monad.State (State (..))
 
 data Expression
   = Const Int
@@ -32,6 +32,11 @@ data ArithmeticError
   = DivisionByZero
   | NegativePow
   deriving (Show)
+
+instance Eq ArithmeticError where
+  DivisionByZero == DivisionByZero = True
+  NegativePow == NegativePow       = True
+  _ == _                           = False
 
 returnError :: a -> Either a b
 returnError = Left
@@ -92,14 +97,17 @@ moving windowSize list
   | windowSize <= 0 = error "Cannot compute average for window size <= 0"
   | otherwise =
     let initialState = MovingAverageState {windowQueue = empty, windowSum = 0, windowLen = 0}
-     in processList list initialState
+        (result, _) = runState (processList list) initialState
+     in result
   where
-    processList :: [Double] -> MovingAverageState -> [Double]
-    processList [] _ = []
-    processList (x : xs) state =
-      let (newPoint, newState) = processCurPoint x state
-       in newPoint : processList xs newState
-
+    processList :: [Double] -> State MovingAverageState [Double]
+    processList [] = return []
+    processList (x:xs) = do
+      processedPoint <- processCurPointState x
+      tailPoints <- processList xs
+      return $ processedPoint : tailPoints
+    processCurPointState :: Double -> State MovingAverageState Double
+    processCurPointState x = state $ processCurPoint x
     processCurPoint :: Double -> MovingAverageState -> (Double, MovingAverageState)
     processCurPoint x curState@MovingAverageState {windowQueue = curQueue, windowSum = curSum, windowLen = curLen}
       | curLen < windowSize =
@@ -109,7 +117,6 @@ moving windowSize list
             newState = MovingAverageState {windowQueue = newQueue, windowSum = newSum, windowLen = newLen}
             answer = newSum / fromIntegral newLen
          in (answer, newState)
-
       | otherwise =
         let (lastValue, queueWithoutLastValue) = fromMaybe (error "Conract violation, size = 0") (pop curQueue)
             newQueue = push queueWithoutLastValue x
@@ -117,4 +124,3 @@ moving windowSize list
             newState = curState {windowQueue = newQueue, windowSum = newSum}
             answer = newSum / fromIntegral curLen
          in (answer, newState)
-
