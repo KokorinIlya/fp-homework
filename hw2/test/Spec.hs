@@ -2,17 +2,26 @@ module Main
   ( main
   ) where
 
-import Task1Spec (stringSumSpec, treeSpec, nonEmptySpec)
-import Task3Spec (elementParserSpec, eofParserSpec, okParserSpec, satisfyParserSpec, streamParserSpec)
+import Block1Spec (nonEmptySpec, stringSumSpec, treeSpec)
+import Block3Spec (correctBracketSequenceSpec, elementParserSpec, eofParserSpec, numberParserSpec,
+                  numbersListsParserSpec, okParserSpec, satisfyParserSpec, streamParserSpec)
+import BonusBlockSpec (contSpec, monadContSpec, trivialContSpec)
 import Test.Hspec (hspec)
 
 main :: IO ()
-main = hspec $ do
-  Task1Spec.stringSumSpec
-  Task1Spec.treeSpec
-  Task1Spec.nonEmptySpec
-  Task3Spec.elementParserSpec
-  Task3Spec.eofParserSpec
-  Task3Spec.okParserSpec
-  Task3Spec.satisfyParserSpec
-  Task3Spec.streamParserSpec
+main =
+  hspec $ do
+    Block1Spec.stringSumSpec
+    Block1Spec.treeSpec
+    Block1Spec.nonEmptySpec
+    Block3Spec.elementParserSpec
+    Block3Spec.eofParserSpec
+    Block3Spec.okParserSpec
+    Block3Spec.satisfyParserSpec
+    Block3Spec.streamParserSpec
+    Block3Spec.correctBracketSequenceSpec
+    Block3Spec.numberParserSpec
+    Block3Spec.numbersListsParserSpec
+    BonusBlockSpec.trivialContSpec
+    BonusBlockSpec.contSpec
+    BonusBlockSpec.monadContSpec

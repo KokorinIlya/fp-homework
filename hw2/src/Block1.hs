@@ -4,17 +4,10 @@ module Block1
   , NonEmpty(..)
   ) where
 
-import Text.Read (readEither)
-import Control.Applicative (liftA2)
+import Text.Read (readMaybe)
 
 stringSum :: (Num t, Read t) => String -> Maybe t
 stringSum = fmap sum . traverse readMaybe . words
-  where
-    readMaybe :: (Num a, Read a) => String -> Maybe a
-    readMaybe toRead =
-      case readEither toRead of
-        Right result -> Just result
-        Left _       -> Nothing
 
 data Tree a
   = Branch (Tree a)
@@ -30,7 +23,10 @@ instance Foldable Tree where
   foldr f z (Leaf a)            = f a z
   foldr f z (Branch left right) = foldr f (foldr f z right) left
 
--- TODO : Traversable Tree
+instance Traversable Tree where
+  traverse f (Leaf value)        = Leaf <$> f value
+  traverse f (Branch left right) = Branch <$> traverse f left <*> traverse f right
+
 data NonEmpty a =
   a :| [a]
   deriving (Show)
@@ -45,12 +41,14 @@ instance Applicative NonEmpty where
 instance Monad NonEmpty where
   (x :| xs) >>= f =
     let (y :| ys) = f x
-        toList (first :| others) = first : others
         listTail = xs >>= (toList . f)
      in y :| (ys ++ listTail)
+    where
+      toList :: NonEmpty a -> [a]
+      toList (first :| others) = first : others
 
 instance Foldable NonEmpty where
-  foldr function rightOne (x :| [])     = function x rightOne
+  foldr function rightOne (x :| []) = function x rightOne
   foldr function rightOne (x :| (y:ys)) = foldrAcc function rightOne (y :| ys) (function x)
     where
       foldrAcc :: (a -> b -> b) -> b -> NonEmpty a -> (b -> b) -> b
@@ -59,4 +57,4 @@ instance Foldable NonEmpty where
         foldrAcc f z (nextElem :| otherElems) (accFunction . f curElem)
 
 instance Traversable NonEmpty where
-  traverse f (x :| xs) = liftA2 (:|) (f x) (traverse f xs)
+  traverse f (x :| xs) = (:|) <$> f x <*> traverse f xs

@@ -1,4 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections       #-}
 
 module Block3
   ( CorrectBracketSequence(..)
@@ -7,25 +8,25 @@ module Block3
   , correctBracketSequenceParser
   , element
   , eof
+  , numbersListParser
+  , numbersListsParser
   , numberParser
   , ok
   , satisfy
   , stream
   ) where
 
-import Data.Char (isDigit)
 import Control.Applicative (Alternative (..))
+import Data.Char (isDigit, isSpace)
+import Data.Functor ((<$))
+import Utils (mapFirst)
 
 newtype Parser s a = Parser
   { runParser :: [s] -> Maybe (a, [s])
   }
 
 instance Functor (Parser s) where
-  fmap f (Parser parsingFunction) =
-    Parser $ \input ->
-      case parsingFunction input of
-        Nothing                  -> Nothing
-        Just (result, remainder) -> Just (f result, remainder)
+  fmap f (Parser parsingFunction) = Parser $ \input -> fmap (mapFirst f) (parsingFunction input)
 
 instance Applicative (Parser s) where
   pure result = Parser $ \input -> Just (result, input)
@@ -40,26 +41,14 @@ instance Applicative (Parser s) where
 
 instance Alternative (Parser s) where
   empty = Parser $ const Nothing
-  Parser pa <|> Parser pb =
-    Parser $ \input ->
-      case pa input of
-        Nothing         -> pb input
-        result@(Just _) -> result
+  Parser pa <|> Parser pb = Parser $ \input -> pa input <|> pb input
 
 instance Monad (Parser s) where
   Parser pa >>= f =
-    Parser $ \input ->
-      case pa input of
-        Nothing -> Nothing
-        Just (a, remainder) ->
-          let (Parser pb) = f a
-           in pb remainder
-
-runSequentually :: Parser s a -> Parser s b -> Parser s (a, b)
-runSequentually pa pb = do
-  a <- pa
-  b <- pb
-  return (a, b)
+    Parser $ \input -> do
+      (result, remainder) <- pa input
+      let (Parser pb) = f result
+      pb remainder
 
 ok :: Parser s ()
 ok = Parser $ \input -> Just ((), input)
@@ -87,11 +76,7 @@ stream ::
      forall a. (Eq a)
   => [a]
   -> Parser a [a]
-stream streamToParse =
-  Parser $ \input ->
-    case cutIfPrefix streamToParse input of
-      Just remainder -> Just (streamToParse, remainder)
-      Nothing        -> Nothing
+stream streamToParse = Parser $ \input -> fmap (streamToParse, ) (cutIfPrefix streamToParse input)
   where
     cutIfPrefix :: [a] -> [a] -> Maybe [a]
     cutIfPrefix [] [] = Just []
@@ -117,47 +102,44 @@ correctBracketSequenceParser = bracketParser <* eof
   where
     bracketParser :: Parser Char CorrectBracketSequence
     bracketParser = nonEmptyParser <|> emptyParser
-
     nonEmptyParser :: Parser Char CorrectBracketSequence
-    nonEmptyParser = fmap (uncurry Concatenation) (runSequentually innerParser bracketParser)
-
+    nonEmptyParser = Concatenation <$> innerParser <*> bracketParser
     innerParser :: Parser Char CorrectBracketSequence
     innerParser = fmap Inner (element '(' *> bracketParser <* element ')')
-
     emptyParser :: Parser Char CorrectBracketSequence
-    emptyParser = fmap (const Empty) ok
+    emptyParser = Empty <$ ok
 
-data Sign = Plus | Minus
+data Sign
+  = Plus
+  | Minus
 
-numberParser :: forall t. Num t => Parser Char t
+numberParser ::
+     forall t. Num t
+  => Parser Char t
 numberParser = parseWithoutSign <|> parseWithSign
   where
-    parseSign :: Parser Char Sign
-    parseSign = fmap (const Minus) (element '-') <|> fmap (const Plus) (element '+')
-
     parseWithSign :: Parser Char t
     parseWithSign = do
       sign <- parseSign
       number <- parseWithoutSign
-      return $ case sign of
-        Plus  -> number
-        Minus -> (-1) * number
-
+      return $
+        case sign of
+          Plus  -> number
+          Minus -> (-1) * number
+    parseSign :: Parser Char Sign
+    parseSign = Minus <$ element '-' <|> Plus <$ element '+'
     parseWithoutSign :: Parser Char t
     parseWithoutSign = do
       (number, _) <- parseWithoutSignImpl
       return number
-
     parseWithoutSignImpl :: Parser Char (t, t)
     parseWithoutSignImpl = do
       curChar <- satisfy isDigit
       let curNum = charToNum curChar
-      (numberTail, numberTailPow) <- parseEnd <|> parseWithoutSignImpl
+      (numberTail, numberTailPow) <- parseWithoutSignImpl <|> parseEnd
       return (curNum * numberTailPow + numberTail, 10 * numberTailPow)
-
     parseEnd :: Parser Char (t, t)
-    parseEnd = fmap (const (0, 1)) eof
-
+    parseEnd = (0, 1) <$ ok
     charToNum :: Char -> t
     charToNum '0' = 0
     charToNum '1' = 1
@@ -168,4 +150,56 @@ numberParser = parseWithoutSign <|> parseWithSign
     charToNum '6' = 6
     charToNum '7' = 7
     charToNum '8' = 8
-    charToNum _ = 9
+    charToNum _   = 9
+
+skipDelimeters :: Parser Char ()
+skipDelimeters = do
+  skipWhitespaces
+  _ <- element ','
+  skipWhitespaces
+  where
+    skipWhitespaces :: Parser Char ()
+    skipWhitespaces = skipSingleOrMoreWhitespaces <|> ok
+    skipSingleOrMoreWhitespaces :: Parser Char ()
+    skipSingleOrMoreWhitespaces = do
+      _ <- satisfy isSpace
+      skipWhitespaces
+
+numbersListParser ::
+     forall t. (Num t, Ord t)
+  => Parser Char [t]
+numbersListParser = do
+  listLength <- numberParser
+  if listLength < 0
+    then empty
+    else parseListOfKnownLength listLength
+  where
+    parseListOfKnownLength :: t -> Parser Char [t]
+    parseListOfKnownLength len
+      | len == 0 = return []
+      | otherwise = do
+        skipDelimeters
+        curElem <- numberParser
+        elemsTail <- parseListOfKnownLength (len - 1)
+        return $ curElem : elemsTail
+
+numbersListsParser ::
+     forall t. (Num t, Ord t)
+  => Parser Char [[t]]
+numbersListsParser = parseNonEmpty <|> parseNil
+  where
+    parseNonEmpty :: Parser Char [[t]]
+    parseNonEmpty = do
+      curList <- numbersListParser
+      otherLists <- parseRemainder
+      return $ curList : otherLists
+    parseRemainder :: Parser Char [[t]]
+    parseRemainder = parseNonEmptyRemainder <|> parseNil
+    parseNonEmptyRemainder :: Parser Char [[t]]
+    parseNonEmptyRemainder = do
+      skipDelimeters
+      remainderHead <- numbersListParser
+      remainderTail <- parseRemainder
+      return $ remainderHead : remainderTail
+    parseNil :: Parser Char [[t]]
+    parseNil = [] <$ eof

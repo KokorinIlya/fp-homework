@@ -1,4 +1,4 @@
-module Task1Spec
+module Block1Spec
   ( stringSumSpec
   , treeSpec
   , nonEmptySpec
@@ -17,7 +17,7 @@ stringSumSpec =
     it "calculates sum of doubles" $ do
       ((stringSum "1.0 2.2 3.5") :: Maybe Double) `shouldBe` (Just 6.7)
 
-    it "fails, when non only numbers appear in the string" $ do
+    it "fails, when not only numbers appear in the string" $ do
       ((stringSum "1 2 a") :: Maybe Int) `shouldBe` Nothing
 
     it "parses numbers, separated by any types of spaces" $ do
@@ -59,10 +59,10 @@ nonEmptySpec =
 
     it "calculates >>= like non empty list" $ do
       let xs :: [Int]
-          xs = [2, 5, 1, 7, 1, 3, 3, 7] >>= (\x -> replicate x x)
+          xs = [2, 5, 1, 7, 1, 3, 3, 7] >>= (\x -> replicate (x + 1) x)
           y :: Int
           ys :: [Int]
-          (y :| ys) = 2 :| [5, 1, 7, 1, 3, 3, 7] >>= (\x -> x :| replicate (x - 1) x)
+          (y :| ys) = 2 :| [5, 1, 7, 1, 3, 3, 7] >>= (\x -> x :| replicate x x)
        in (y : ys) `shouldBe` xs
 
     it "calculates foldr like foldr for non empty list" $ do
