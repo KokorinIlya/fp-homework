@@ -20,11 +20,11 @@ library
   hs-source-dirs:      src
   exposed-modules:
         Block1
-      --, Block2
-      --, Block21
-      --, Block22
+      , Block2
       , Block3
       , BonusBlock
+      , Monads
+      , Monads2
       , Utils
   ghc-options:         -Wall
   build-depends:       base >= 4.9 && < 5,

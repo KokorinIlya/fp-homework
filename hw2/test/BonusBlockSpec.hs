@@ -53,6 +53,9 @@ monadContSpec =
     it "should make computations using do-notation" $ do
       runCont (doPythagoras 3 4) id `shouldBe` "Result is 25"
 
+    it "should make computations using <*>" $ do
+      runCont (doComputational <$> computeX <*> computeY <*> computeZ <*> computeV) id `shouldBe` 16
+
   where
     square :: Int -> Cont r Int
     square x = return $ x * x
@@ -72,3 +75,19 @@ monadContSpec =
       y2 <- square y
       s <- add x2 y2
       toString s
+
+    doComputational :: Int -> Int -> Int -> Int -> Int
+    doComputational x y z v = (x + y - z) * v
+
+    computeX :: Cont r Int
+    computeX = return 2
+
+    computeY :: Cont r Int
+    computeY = return 3
+
+    computeZ :: Cont r Int
+    computeZ = return 1
+
+    computeV :: Cont r Int
+    computeV = return 4
+

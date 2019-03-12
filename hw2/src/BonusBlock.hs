@@ -11,10 +11,7 @@ instance Functor (Cont r) where
 
 instance Applicative (Cont r) where
   pure value = Cont $ \onComplete -> onComplete value
-  Cont contF <*> Cont contA =
-    Cont $ \onComplete ->
-      let functionTransformer function = contA (onComplete . function)
-       in contF functionTransformer
+  Cont contF <*> Cont contA = Cont $ \onComplete -> contF (\f -> contA (onComplete . f))
 
 instance Monad (Cont r) where
   (Cont cont) >>= f = Cont $ \onComplete -> cont (\aValue -> runCont (f aValue) onComplete)
