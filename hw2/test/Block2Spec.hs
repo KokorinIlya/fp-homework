@@ -38,6 +38,12 @@ evalSpec =
     it "calculates *" $ do
       property checkMul
 
+    it "calculates /" $ do
+      property checkDiv
+
+    it "calculates ^" $ do
+      property checkPow
+
     it "calculates correct examples" $ do
       eval (Division (Const 10) (Addition (Const 3) (Negation (Const (-2))))) `shouldBe` Right 2
 
@@ -49,8 +55,6 @@ evalSpec =
 
     it "fails with correct error, when pow by negative number is present" $ do
       eval (Power (Const 10) (Addition (Const 3) (Negation (Const 4)))) `shouldBe` Left NegativePow
-
-    -- TODO : ariphemical props, like (a + b) + c == a + (b + c)
 
   where
     checkConst :: Int -> Bool
@@ -64,3 +68,13 @@ evalSpec =
 
     checkMul :: Int -> Int -> Bool
     checkMul x y = eval (Multiplication (Const x) (Const y)) == Right (x * y)
+
+    checkDiv :: Int -> Int -> Bool
+    checkDiv x y
+      | y == 0    = eval (Division (Const x) (Const y)) == Left DivisionByZero
+      | otherwise = eval (Division (Const x) (Const y)) == Right (x `div` y)
+
+    checkPow :: Int -> Int -> Bool
+    checkPow x y
+      | y < 0     = eval (Power (Const x) (Const y)) == Left NegativePow
+      | otherwise = eval (Power (Const x) (Const y)) == Right (x ^ y)

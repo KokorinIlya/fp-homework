@@ -11,7 +11,7 @@ module Block2
   , push
   ) where
 
-import Control.Monad.State (State, runState, state)
+import Control.Monad.State (State, state, evalState)
 import Data.Maybe (fromMaybe)
 
 data Expression
@@ -97,8 +97,7 @@ moving windowSize list
   | windowSize <= 0 = error "Cannot compute average for window size <= 0"
   | otherwise =
     let initialState = MovingAverageState {windowQueue = empty, windowSum = 0, windowLen = 0}
-        (result, _) = runState (processList list) initialState
-     in result
+     in evalState (processList list) initialState
   where
     processList :: [Double] -> State MovingAverageState [Double]
     processList [] = return []

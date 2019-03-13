@@ -26,7 +26,7 @@ newtype Parser s a = Parser
   }
 
 instance Functor (Parser s) where
-  fmap f (Parser parsingFunction) = Parser $ \input -> fmap (mapFirst f) (parsingFunction input)
+  fmap f (Parser parsingFunction) = Parser $ fmap (mapFirst f) . parsingFunction
 
 instance Applicative (Parser s) where
   pure result = Parser $ \input -> Just (result, input)
@@ -67,7 +67,7 @@ satisfy predicate = Parser checkSymbol
     checkSymbol [] = Nothing
     checkSymbol (x:xs)
       | predicate x = Just (x, xs)
-      | otherwise = Nothing
+      | otherwise   = Nothing
 
 element :: Eq s => s -> Parser s s
 element el = satisfy (== el)
@@ -76,14 +76,14 @@ stream ::
      forall a. (Eq a)
   => [a]
   -> Parser a [a]
-stream streamToParse = Parser $ \input -> fmap (streamToParse, ) (cutIfPrefix streamToParse input)
+stream streamToParse = Parser $ fmap (streamToParse, ) . cutIfPrefix streamToParse
   where
     cutIfPrefix :: [a] -> [a] -> Maybe [a]
-    cutIfPrefix [] [] = Just []
+    cutIfPrefix [] []           = Just []
     cutIfPrefix [] second@(_:_) = Just second
-    cutIfPrefix (_:_) [] = Nothing
+    cutIfPrefix (_:_) []        = Nothing
     cutIfPrefix (x:xs) (y:ys)
-      | x == y = cutIfPrefix xs ys
+      | x == y    = cutIfPrefix xs ys
       | otherwise = Nothing
 
 data CorrectBracketSequence
@@ -102,10 +102,13 @@ correctBracketSequenceParser = bracketParser <* eof
   where
     bracketParser :: Parser Char CorrectBracketSequence
     bracketParser = nonEmptyParser <|> emptyParser
+
     nonEmptyParser :: Parser Char CorrectBracketSequence
     nonEmptyParser = Concatenation <$> innerParser <*> bracketParser
+
     innerParser :: Parser Char CorrectBracketSequence
-    innerParser = fmap Inner (element '(' *> bracketParser <* element ')')
+    innerParser = Inner <$> (element '(' *> bracketParser <* element ')')
+
     emptyParser :: Parser Char CorrectBracketSequence
     emptyParser = Empty <$ ok
 
@@ -116,30 +119,33 @@ data Sign
 numberParser ::
      forall t. Num t
   => Parser Char t
-numberParser = parseWithoutSign <|> parseWithSign
+numberParser = unsignedNumberParser <|> signedNumberParser
   where
-    parseWithSign :: Parser Char t
-    parseWithSign = do
-      sign <- parseSign
-      number <- parseWithoutSign
+    signedNumberParser :: Parser Char t
+    signedNumberParser = do
+      sign <- signParser
+      number <- unsignedNumberParser
       return $
         case sign of
           Plus  -> number
           Minus -> (-1) * number
-    parseSign :: Parser Char Sign
-    parseSign = Minus <$ element '-' <|> Plus <$ element '+'
-    parseWithoutSign :: Parser Char t
-    parseWithoutSign = do
-      (number, _) <- parseWithoutSignImpl
-      return number
-    parseWithoutSignImpl :: Parser Char (t, t)
-    parseWithoutSignImpl = do
+
+    signParser :: Parser Char Sign
+    signParser = Minus <$ element '-' <|> Plus <$ element '+'
+
+    unsignedNumberParser :: Parser Char t
+    unsignedNumberParser = fmap fst unsignedNumberParserImpl
+
+    unsignedNumberParserImpl :: Parser Char (t, t)
+    unsignedNumberParserImpl = do
       curChar <- satisfy isDigit
       let curNum = charToNum curChar
-      (numberTail, numberTailPow) <- parseWithoutSignImpl <|> parseEnd
+      (numberTail, numberTailPow) <- unsignedNumberParserImpl <|> parseEnd
       return (curNum * numberTailPow + numberTail, 10 * numberTailPow)
+
     parseEnd :: Parser Char (t, t)
     parseEnd = (0, 1) <$ ok
+
     charToNum :: Char -> t
     charToNum '0' = 0
     charToNum '1' = 1
@@ -172,34 +178,37 @@ numbersListParser = do
   listLength <- numberParser
   if listLength < 0
     then empty
-    else parseListOfKnownLength listLength
+    else listOfKnownLengthParser listLength
   where
-    parseListOfKnownLength :: t -> Parser Char [t]
-    parseListOfKnownLength len
+    listOfKnownLengthParser :: t -> Parser Char [t]
+    listOfKnownLengthParser len
       | len == 0 = return []
       | otherwise = do
         skipDelimeters
         curElem <- numberParser
-        elemsTail <- parseListOfKnownLength (len - 1)
+        elemsTail <- listOfKnownLengthParser (len - 1)
         return $ curElem : elemsTail
 
 numbersListsParser ::
      forall t. (Num t, Ord t)
   => Parser Char [[t]]
-numbersListsParser = parseNonEmpty <|> parseNil
+numbersListsParser = nonEmptyParser <|> nilParser
   where
-    parseNonEmpty :: Parser Char [[t]]
-    parseNonEmpty = do
+    nonEmptyParser :: Parser Char [[t]]
+    nonEmptyParser = do
       curList <- numbersListParser
-      otherLists <- parseRemainder
+      otherLists <- remainderParser
       return $ curList : otherLists
-    parseRemainder :: Parser Char [[t]]
-    parseRemainder = parseNonEmptyRemainder <|> parseNil
-    parseNonEmptyRemainder :: Parser Char [[t]]
-    parseNonEmptyRemainder = do
+
+    remainderParser :: Parser Char [[t]]
+    remainderParser = nonEmptyRemainderParser <|> nilParser
+
+    nonEmptyRemainderParser :: Parser Char [[t]]
+    nonEmptyRemainderParser = do
       skipDelimeters
       remainderHead <- numbersListParser
-      remainderTail <- parseRemainder
+      remainderTail <- remainderParser
       return $ remainderHead : remainderTail
-    parseNil :: Parser Char [[t]]
-    parseNil = [] <$ eof
+
+    nilParser :: Parser Char [[t]]
+    nilParser = [] <$ eof

@@ -2,7 +2,7 @@
 {-# LANGUAGE NoImplicitPrelude    #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Monads2
+module MonadToJoin
   ( Monad (..)
   , MonadJoin (..)
   ) where
@@ -26,3 +26,4 @@ instance Monad m => MonadJoin m where
   (>>= id) :: m (m b) -> m b
   -}
   join = (>>= id)
+

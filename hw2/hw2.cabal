@@ -23,8 +23,10 @@ library
       , Block2
       , Block3
       , BonusBlock
-      , Monads
-      , Monads2
+      --, MonadToFish
+      --, MonadToJoin
+      --, FishToJoin
+      --, FishToMonad
       , Utils
   ghc-options:         -Wall
   build-depends:       base >= 4.9 && < 5,
