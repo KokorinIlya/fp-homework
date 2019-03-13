@@ -7,6 +7,7 @@ module Block3Spec
   , okParserSpec
   , satisfyParserSpec
   , streamParserSpec
+  , parserSpec
   ) where
 
 import Block3
@@ -27,6 +28,18 @@ import Data.Char (isDigit)
 import Test.Hspec (SpecWith, describe, it, shouldBe)
 import Data.Maybe (isNothing)
 import Utils (mapFirst)
+
+parserSpec :: SpecWith ()
+parserSpec =
+  describe "Block3.Parser" $ do
+    it "can be used for applicative style programming" $ do
+      runParser ((++) <$> stream "aba" <*> stream "caba") "abacaba" `shouldBe` Just ("abacaba", "")
+
+    it "fails, if first appicative fails" $ do
+      runParser ((++) <$> stream "aca" <*> stream "caba") "abacaba" `shouldBe` Nothing
+
+    it "fails, if second appicative fails" $ do
+      runParser ((++) <$> stream "aba" <*> stream "caca") "abacaba" `shouldBe` Nothing
 
 elementParserSpec :: SpecWith ()
 elementParserSpec =

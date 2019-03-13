@@ -31,13 +31,9 @@ instance Functor (Parser s) where
 instance Applicative (Parser s) where
   pure result = Parser $ \input -> Just (result, input)
   (Parser pf) <*> (Parser pa) =
-    Parser $ \input ->
-      case pf input of
-        Nothing -> Nothing
-        Just (f, remainder) ->
-          case pa remainder of
-            Nothing              -> Nothing
-            Just (a, streamTail) -> Just (f a, streamTail)
+    Parser $ \input -> do
+      (f, remainder) <- pf input
+      fmap (mapFirst f) (pa remainder)
 
 instance Alternative (Parser s) where
   empty = Parser $ const Nothing
@@ -67,7 +63,7 @@ satisfy predicate = Parser checkSymbol
     checkSymbol [] = Nothing
     checkSymbol (x:xs)
       | predicate x = Just (x, xs)
-      | otherwise   = Nothing
+      | otherwise = Nothing
 
 element :: Eq s => s -> Parser s s
 element el = satisfy (== el)
@@ -79,11 +75,11 @@ stream ::
 stream streamToParse = Parser $ fmap (streamToParse, ) . cutIfPrefix streamToParse
   where
     cutIfPrefix :: [a] -> [a] -> Maybe [a]
-    cutIfPrefix [] []           = Just []
+    cutIfPrefix [] [] = Just []
     cutIfPrefix [] second@(_:_) = Just second
-    cutIfPrefix (_:_) []        = Nothing
+    cutIfPrefix (_:_) [] = Nothing
     cutIfPrefix (x:xs) (y:ys)
-      | x == y    = cutIfPrefix xs ys
+      | x == y = cutIfPrefix xs ys
       | otherwise = Nothing
 
 data CorrectBracketSequence
@@ -102,13 +98,10 @@ correctBracketSequenceParser = bracketParser <* eof
   where
     bracketParser :: Parser Char CorrectBracketSequence
     bracketParser = nonEmptyParser <|> emptyParser
-
     nonEmptyParser :: Parser Char CorrectBracketSequence
     nonEmptyParser = Concatenation <$> innerParser <*> bracketParser
-
     innerParser :: Parser Char CorrectBracketSequence
     innerParser = Inner <$> (element '(' *> bracketParser <* element ')')
-
     emptyParser :: Parser Char CorrectBracketSequence
     emptyParser = Empty <$ ok
 
@@ -129,23 +122,18 @@ numberParser = unsignedNumberParser <|> signedNumberParser
         case sign of
           Plus  -> number
           Minus -> (-1) * number
-
     signParser :: Parser Char Sign
     signParser = Minus <$ element '-' <|> Plus <$ element '+'
-
     unsignedNumberParser :: Parser Char t
     unsignedNumberParser = fmap fst unsignedNumberParserImpl
-
     unsignedNumberParserImpl :: Parser Char (t, t)
     unsignedNumberParserImpl = do
       curChar <- satisfy isDigit
       let curNum = charToNum curChar
       (numberTail, numberTailPow) <- unsignedNumberParserImpl <|> parseEnd
       return (curNum * numberTailPow + numberTail, 10 * numberTailPow)
-
     parseEnd :: Parser Char (t, t)
     parseEnd = (0, 1) <$ ok
-
     charToNum :: Char -> t
     charToNum '0' = 0
     charToNum '1' = 1
@@ -199,16 +187,13 @@ numbersListsParser = nonEmptyParser <|> nilParser
       curList <- numbersListParser
       otherLists <- remainderParser
       return $ curList : otherLists
-
     remainderParser :: Parser Char [[t]]
     remainderParser = nonEmptyRemainderParser <|> nilParser
-
     nonEmptyRemainderParser :: Parser Char [[t]]
     nonEmptyRemainderParser = do
       skipDelimeters
       remainderHead <- numbersListParser
       remainderTail <- remainderParser
       return $ remainderHead : remainderTail
-
     nilParser :: Parser Char [[t]]
     nilParser = [] <$ eof
