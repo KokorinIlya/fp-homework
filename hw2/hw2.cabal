@@ -30,7 +30,8 @@ library
       , Utils
   ghc-options:         -Wall
   build-depends:       base >= 4.9 && < 5,
-                       mtl
+                       mtl,
+                       hw1
   default-language:    Haskell2010
 
 test-suite doctests

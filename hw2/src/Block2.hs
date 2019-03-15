@@ -2,17 +2,16 @@ module Block2
   ( ArithmeticError(..)
   , Expression(..)
   , MovingAverageState(..)
-  , Queue(..)
-  , empty
+  , NonEmptyQueue(..)
   , eval
   , moving
-  , top
-  , pop
+  , popAndPush
   , push
+  , singleElementQueue
   ) where
 
-import Control.Monad.State (State, state, evalState)
-import Data.Maybe (fromMaybe)
+import Control.Monad.State (State, evalState, state)
+import NonEmpty (NonEmpty (..))
 
 data Expression
   = Const Int
@@ -35,8 +34,8 @@ data ArithmeticError
 
 instance Eq ArithmeticError where
   DivisionByZero == DivisionByZero = True
-  NegativePow == NegativePow       = True
-  _ == _                           = False
+  NegativePow == NegativePow = True
+  _ == _ = False
 
 returnError :: a -> Either a b
 returnError = Left
@@ -62,51 +61,50 @@ eval (Power left right) = do
       return $ leftResult ^ rightResult
 eval (Negation expr) = fmap negate (eval expr)
 
-data Queue a = Queue
-  { headList :: [a]
+data NonEmptyQueue a = NonEmptyQueue
+  { headList :: NonEmpty a
   , tailList :: [a]
-  } deriving (Show)
+  }
 
-push :: Queue a -> a -> Queue a
-push queue@Queue {tailList = curTailList} x = queue {tailList = x : curTailList}
+push :: NonEmptyQueue a -> a -> NonEmptyQueue a
+push queue@NonEmptyQueue {tailList = curTailList} x = queue {tailList = x : curTailList}
 
-pop :: Queue a -> Maybe (a, Queue a)
-pop queue@Queue {headList = x:xs} = Just (x, queue {headList = xs})
-pop Queue {headList = [], tailList = curTail} =
-  case reverse curTail of
-    []   -> Nothing
-    x:xs -> Just (x, Queue {headList = xs, tailList = []})
+popAndPush :: NonEmptyQueue a -> a -> (a, NonEmptyQueue a)
+popAndPush NonEmptyQueue {headList = curHead :| (nextHead:headListTail), tailList = curTailList} x =
+  (curHead, NonEmptyQueue {headList = nextHead :| headListTail, tailList = x : curTailList})
+popAndPush NonEmptyQueue {headList = curHead :| [], tailList = curTailList} x =
+  case reverse curTailList of
+    []   -> (curHead, NonEmptyQueue {headList = x :| [], tailList = []})
+    y:ys -> (curHead, NonEmptyQueue {headList = y :| ys, tailList = [x]})
 
-top :: Queue a -> Maybe a
-top Queue {headList = x:_}                          = Just x
-top Queue {headList = [], tailList = curTail@(_:_)} = Just $ last curTail
-top Queue {headList = [], tailList = []}            = Nothing
-
-empty :: Queue a
-empty = Queue {headList = [], tailList = []}
+singleElementQueue :: a -> NonEmptyQueue a
+singleElementQueue x = NonEmptyQueue {headList = x :| [], tailList = []}
 
 data MovingAverageState = MovingAverageState
-  { windowQueue :: Queue Double
+  { windowQueue :: NonEmptyQueue Double
   , windowSum   :: Double
   , windowLen   :: Int
   }
 
 moving :: Int -> [Double] -> [Double]
 moving _ [] = []
-moving windowSize list
+moving windowSize (firstPoint:otherPoints)
   | windowSize <= 0 = error "Cannot compute average for window size <= 0"
   | otherwise =
-    let initialState = MovingAverageState {windowQueue = empty, windowSum = 0, windowLen = 0}
-     in evalState (processList list) initialState
+    let initialQueue = singleElementQueue firstPoint
+        initialState = MovingAverageState {windowQueue = initialQueue, windowSum = firstPoint, windowLen = 1}
+     in firstPoint : evalState (processList otherPoints) initialState
   where
     processList :: [Double] -> State MovingAverageState [Double]
-    processList [] = return []
+    processList []     = return []
     processList (x:xs) = do
       processedPoint <- processCurPointState x
       tailPoints <- processList xs
       return $ processedPoint : tailPoints
+
     processCurPointState :: Double -> State MovingAverageState Double
     processCurPointState x = state $ processCurPoint x
+
     processCurPoint :: Double -> MovingAverageState -> (Double, MovingAverageState)
     processCurPoint x curState@MovingAverageState {windowQueue = curQueue, windowSum = curSum, windowLen = curLen}
       | curLen < windowSize =
@@ -117,8 +115,7 @@ moving windowSize list
             answer = newSum / fromIntegral newLen
          in (answer, newState)
       | otherwise =
-        let (lastValue, queueWithoutLastValue) = fromMaybe (error "Conract violation, size = 0") (pop curQueue)
-            newQueue = push queueWithoutLastValue x
+        let (lastValue, newQueue) = popAndPush curQueue x
             newSum = curSum - lastValue + x
             newState = curState {windowQueue = newQueue, windowSum = newSum}
             answer = newSum / fromIntegral curLen
