@@ -2,7 +2,7 @@
 
 module BonusBlock
   ( Cont(..)
-  , PausedProcess(..)
+  , Syscall(..)
   , Waiting
   , ReadyProcess(..)
   , kernel
@@ -10,11 +10,14 @@ module BonusBlock
   , example
   , writeLine
   , exit
+  , fork
+  , forkExample
+  , yield
+  , yieldExample
   ) where
 
 import Control.Monad.State (State, get, put, runState)
 import Data.Void (Void)
-import Prelude hiding (read)
 
 newtype Cont r a = Cont
   { runCont :: (a -> r) -> r
@@ -35,9 +38,6 @@ data Queue a = Queue
   , tailList :: [a]
   }
 
-empty :: Queue a
-empty = Queue {headList = [], tailList = []}
-
 singleton :: a -> Queue a
 singleton x = Queue {tailList = [x], headList = []}
 
@@ -57,18 +57,32 @@ data KernelState = KernelState
   , stdout         :: String
   }
 
-type Waiting r = r -> PausedProcess
+type Waiting r = r -> Syscall
 
-data PausedProcess
-  = ReadPaused (Waiting String)
-  | WritePaused String
-                (Waiting ())
-  | ExitPaused (Waiting Void)
+data ForkTag
+  = Child
+  | Parent
+
+data Syscall
+  = ReadSyscall (Waiting String)
+  | WriteSyscall String
+                 (Waiting ())
+  | ExitSyscall (Waiting Void)
+  | ForkSyscall (Waiting ForkTag)
+  | YieldSyscall (Waiting ())
 
 data ReadyProcess = forall r. ReadyProcess
   { computationToNextSyscall :: Waiting r
   , processState             :: r
   }
+
+yieldAction :: Waiting () -> State KernelState ()
+yieldAction onReturn = addProcess $ ReadyProcess onReturn ()
+
+forkAction :: Waiting ForkTag -> State KernelState ()
+forkAction onFork = do
+  addProcess $ ReadyProcess onFork Child
+  addProcess $ ReadyProcess onFork Parent
 
 readLineAction :: Waiting String -> State KernelState ()
 readLineAction onRead = do
@@ -88,9 +102,7 @@ writeLineAction s onWrite = do
   addProcess $ ReadyProcess onWrite ()
 
 exitAction :: Waiting Void -> State KernelState ()
-exitAction _ = do
-  curKernelState <- get
-  put curKernelState {readyProcesses = empty}
+exitAction _ = return ()
 
 addProcess :: ReadyProcess -> State KernelState ()
 addProcess process = do
@@ -106,30 +118,38 @@ kernelImpl = do
     Just (ReadyProcess {computationToNextSyscall = curCompuation, processState = curState}, q) -> do
       put curKernel {readyProcesses = q}
       case curCompuation curState of
-        ReadPaused onRead     -> readLineAction onRead
-        WritePaused s onWrite -> writeLineAction s onWrite
-        ExitPaused onExit     -> exitAction onExit
+        ReadSyscall onRead     -> readLineAction onRead
+        WriteSyscall s onWrite -> writeLineAction s onWrite
+        ExitSyscall onExit     -> exitAction onExit
+        ForkSyscall onFork     -> forkAction onFork
+        YieldSyscall onReturn  -> yieldAction onReturn
       kernelImpl
 
-kernel :: Cont PausedProcess Void -> String -> String
+kernel :: Cont Syscall Void -> String -> String
 kernel process input =
-  let f :: Void -> PausedProcess
-      f _ = ExitPaused f
+  let f :: Void -> Syscall
+      f _ = ExitSyscall f
       initProc = ReadyProcess (runCont process) f
       initState = KernelState {readyProcesses = singleton initProc, stdin = input, stdout = ""}
       (_, finalKernel) = runState kernelImpl initState
    in stdout finalKernel
 
-readLine :: Cont PausedProcess String
-readLine = Cont $ \c -> ReadPaused c
+readLine :: Cont Syscall String
+readLine = Cont $ \c -> ReadSyscall c
 
-writeLine :: String -> Cont PausedProcess ()
-writeLine s = Cont $ \c -> WritePaused s c
+writeLine :: String -> Cont Syscall ()
+writeLine s = Cont $ \c -> WriteSyscall s c
 
-exit :: Cont PausedProcess Void
-exit = Cont $ \c -> ExitPaused c
+exit :: Cont Syscall Void
+exit = Cont $ \c -> ExitSyscall c
 
-example :: Cont PausedProcess Void
+fork :: Cont Syscall ForkTag
+fork = Cont $ \c -> ForkSyscall c
+
+yield :: Cont Syscall ()
+yield = Cont $ \c -> YieldSyscall c
+
+example :: Cont Syscall Void
 example = do
   s <- readLine
   let str = "Hello, " ++ s ++ "!"
@@ -138,3 +158,31 @@ example = do
   let str' = "Also, hello, " ++ s' ++ "!"
   writeLine str'
   exit
+
+forkExample :: Cont Syscall Void
+forkExample = do
+  pid <- fork
+  case pid of
+    Child -> do
+      writeLine "Hello from child process"
+      exit
+    Parent -> do
+      s <- readLine
+      let str = "Hello, " ++ s ++ " from parent process"
+      writeLine str
+      exit
+
+yieldExample :: Cont Syscall Void
+yieldExample = do
+  pid <- fork
+  case pid of
+    Child -> do
+      writeLine "Hello from child process, child process is yielding"
+      yield
+      writeLine "Child process is back!"
+      exit
+    Parent -> do
+      s <- readLine
+      let str = "Hello, " ++ s ++ ", from parent process"
+      writeLine str
+      exit
