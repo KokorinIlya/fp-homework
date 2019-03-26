@@ -49,6 +49,7 @@ nonEmptySpec =
     it "calculates fmap like non empty list" $ do
      property checkFmap
 
+    -- сделать property, функции генерить через (+) <$> randomList
     it "calculates <*> like non empty list" $ do
       let xs :: [Integer]
           xs = [(+ 2), (* 3), (1 -), (`subtract` 4)] <*> [1, 3, 3, 7]

@@ -98,10 +98,13 @@ correctBracketSequenceParser = bracketParser <* eof
   where
     bracketParser :: Parser Char CorrectBracketSequence
     bracketParser = nonEmptyParser <|> emptyParser
+
     nonEmptyParser :: Parser Char CorrectBracketSequence
     nonEmptyParser = Concatenation <$> innerParser <*> bracketParser
+
     innerParser :: Parser Char CorrectBracketSequence
     innerParser = Inner <$> (element '(' *> bracketParser <* element ')')
+
     emptyParser :: Parser Char CorrectBracketSequence
     emptyParser = Empty <$ ok
 
@@ -122,10 +125,13 @@ numberParser = unsignedNumberParser <|> signedNumberParser
         case sign of
           Plus  -> number
           Minus -> (-1) * number
+
     signParser :: Parser Char Sign
     signParser = Minus <$ element '-' <|> Plus <$ element '+'
+
     unsignedNumberParser :: Parser Char t
     unsignedNumberParser = fmap fst unsignedNumberParserImpl
+
     unsignedNumberParserImpl :: Parser Char (t, t)
     unsignedNumberParserImpl = do
       curChar <- satisfy isDigit

@@ -34,8 +34,8 @@ data ArithmeticError
 
 instance Eq ArithmeticError where
   DivisionByZero == DivisionByZero = True
-  NegativePow == NegativePow = True
-  _ == _ = False
+  NegativePow == NegativePow       = True
+  _ == _                           = False
 
 returnError :: a -> Either a b
 returnError = Left
@@ -49,16 +49,12 @@ eval (Division left right) = do
   rightResult <- eval right
   if rightResult == 0
     then returnError DivisionByZero
-    else do
-      leftResult <- eval left
-      return $ leftResult `div` rightResult
+    else div <$> eval left <*> pure rightResult
 eval (Power left right) = do
   rightResult <- eval right
   if rightResult < 0
     then returnError NegativePow
-    else do
-      leftResult <- eval left
-      return $ leftResult ^ rightResult
+    else (^) <$> eval left <*> pure rightResult
 eval (Negation expr) = fmap negate (eval expr)
 
 data NonEmptyQueue a = NonEmptyQueue
