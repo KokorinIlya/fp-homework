@@ -1,7 +1,7 @@
 module Block1
-  ( Tree(..)
+  ( NonEmpty(..)
+  , Tree(..)
   , stringSum
-  , NonEmpty(..)
   ) where
 
 import Text.Read (readMaybe)

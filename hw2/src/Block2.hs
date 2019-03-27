@@ -10,8 +10,9 @@ module Block2
   , singleElementQueue
   ) where
 
-import Control.Monad.State (State, evalState, state)
-import NonEmpty (NonEmpty (..))
+import Control.Monad.State (State, evalState, get, put)
+
+import Block1 (NonEmpty (..))
 
 data Expression
   = Const Int
@@ -34,8 +35,8 @@ data ArithmeticError
 
 instance Eq ArithmeticError where
   DivisionByZero == DivisionByZero = True
-  NegativePow == NegativePow       = True
-  _ == _                           = False
+  NegativePow == NegativePow = True
+  _ == _ = False
 
 returnError :: a -> Either a b
 returnError = Left
@@ -92,27 +93,24 @@ moving windowSize (firstPoint:otherPoints)
      in firstPoint : evalState (processList otherPoints) initialState
   where
     processList :: [Double] -> State MovingAverageState [Double]
-    processList []     = return []
+    processList [] = return []
     processList (x:xs) = do
-      processedPoint <- processCurPointState x
+      processedPoint <- processCurPoint x
       tailPoints <- processList xs
       return $ processedPoint : tailPoints
 
-    processCurPointState :: Double -> State MovingAverageState Double
-    processCurPointState x = state $ processCurPoint x
-
-    processCurPoint :: Double -> MovingAverageState -> (Double, MovingAverageState)
-    processCurPoint x curState@MovingAverageState {windowQueue = curQueue, windowSum = curSum, windowLen = curLen}
-      | curLen < windowSize =
-        let newQueue = push curQueue x
-            newSum = curSum + x
-            newLen = curLen + 1
-            newState = MovingAverageState {windowQueue = newQueue, windowSum = newSum, windowLen = newLen}
-            answer = newSum / fromIntegral newLen
-         in (answer, newState)
-      | otherwise =
-        let (lastValue, newQueue) = popAndPush curQueue x
-            newSum = curSum - lastValue + x
-            newState = curState {windowQueue = newQueue, windowSum = newSum}
-            answer = newSum / fromIntegral curLen
-         in (answer, newState)
+    processCurPoint :: Double -> State MovingAverageState Double
+    processCurPoint x = do
+      curState@MovingAverageState {windowQueue = curQueue, windowSum = curSum, windowLen = curLen} <- get
+      if curLen < windowSize
+        then do
+          let newQueue = push curQueue x
+          let newSum = curSum + x
+          let newLen = curLen + 1
+          put MovingAverageState {windowQueue = newQueue, windowSum = newSum, windowLen = newLen}
+          return $ newSum / fromIntegral newLen
+        else do
+          let (lastValue, newQueue) = popAndPush curQueue x
+          let newSum = curSum - lastValue + x
+          put curState {windowQueue = newQueue, windowSum = newSum}
+          return $ newSum / fromIntegral curLen

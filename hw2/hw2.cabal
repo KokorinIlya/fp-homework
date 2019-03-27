@@ -23,16 +23,14 @@ library
       , Block2
       , Block3
       , BonusBlock
-      , MonadToFish
-      , MonadToJoin
       , FishToJoin
       , FishToMonad
+      , MonadToFish
+      , MonadToJoin
       , Utils
   ghc-options:         -Wall
   build-depends:       base >= 4.9 && < 5,
-                       mtl,
-                       hw1,
-                       lens
+                       mtl
   default-language:    Haskell2010
 
 test-suite doctests
