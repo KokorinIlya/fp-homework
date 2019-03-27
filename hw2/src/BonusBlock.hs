@@ -5,7 +5,8 @@ module BonusBlock
   , Syscall(..)
   , Waiting
   , ReadyProcess(..)
-  , kernel
+  , ForkTag(..)
+  , kernelPlayground
   , readLine
   , example
   , writeLine
@@ -14,6 +15,7 @@ module BonusBlock
   , forkExample
   , yield
   , yieldExample
+  , kernelIO
   ) where
 
 import Control.Monad.State (State, get, put, runState)
@@ -110,8 +112,8 @@ addProcess process = do
   let newRunning = push curRunning process
   put curKernelState {readyProcesses = newRunning}
 
-kernelImpl :: State KernelState ()
-kernelImpl = do
+kernelPlaygroundImpl :: State KernelState ()
+kernelPlaygroundImpl = do
   curKernel@KernelState {readyProcesses = curReady} <- get
   case pop curReady of
     Nothing -> return ()
@@ -123,16 +125,38 @@ kernelImpl = do
         ExitSyscall onExit     -> exitAction onExit
         ForkSyscall onFork     -> forkAction onFork
         YieldSyscall onReturn  -> yieldAction onReturn
-      kernelImpl
+      kernelPlaygroundImpl
 
-kernel :: Cont Syscall Void -> String -> String
-kernel process input =
+kernelPlayground :: Cont Syscall Void -> String -> String
+kernelPlayground process input =
   let f :: Void -> Syscall
       f _ = ExitSyscall f
       initProc = ReadyProcess (runCont process) f
       initState = KernelState {readyProcesses = singleton initProc, stdin = input, stdout = ""}
-      (_, finalKernel) = runState kernelImpl initState
+      (_, finalKernel) = runState kernelPlaygroundImpl initState
    in stdout finalKernel
+
+kernelIOImpl :: Queue Syscall -> IO ()
+kernelIOImpl queue =
+  case pop queue of
+    Nothing -> return ()
+    Just (ReadSyscall onRead, popped) -> do
+      s <- getLine
+      kernelIOImpl $ push popped (onRead s)
+    Just (WriteSyscall s onWrite, popped) -> do
+      putStrLn s
+      kernelIOImpl $ push popped (onWrite ())
+    Just (ExitSyscall _, popped) -> kernelIOImpl popped
+    Just (ForkSyscall onFork, popped) -> do
+      let newQueue = push popped (onFork Child)
+      kernelIOImpl $ push newQueue (onFork Parent)
+    Just (YieldSyscall onReturn, popped) -> kernelIOImpl $ push popped (onReturn ())
+
+kernelIO :: Cont Syscall Void -> IO ()
+kernelIO process =
+  let f :: Void -> Syscall
+      f _ = ExitSyscall f
+   in kernelIOImpl $ singleton $ runCont process (\_ -> ExitSyscall f)
 
 readLine :: Cont Syscall String
 readLine = Cont $ \c -> ReadSyscall c
@@ -168,7 +192,7 @@ forkExample = do
       exit
     Parent -> do
       s <- readLine
-      let str = "Hello, " ++ s ++ " from parent process"
+      let str = "Hello, " ++ s ++ ", from parent process"
       writeLine str
       exit
 
