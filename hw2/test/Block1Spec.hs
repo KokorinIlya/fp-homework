@@ -49,14 +49,8 @@ nonEmptySpec =
     it "calculates fmap like non empty list" $ do
      property checkFmap
 
-    -- сделать property, функции генерить через (+) <$> randomList
     it "calculates <*> like non empty list" $ do
-      let xs :: [Integer]
-          xs = [(+ 2), (* 3), (1 -), (`subtract` 4)] <*> [1, 3, 3, 7]
-          y :: Integer
-          ys :: [Integer]
-          (y :| ys) = (+ 2) :| [(* 3), (1 -), (`subtract` 4)] <*> 1 :| [3, 3, 7]
-       in (y : ys) `shouldBe` xs
+      property checkApplicative
 
     it "calculates >>= like non empty list" $ do
       let xs :: [Int]
@@ -67,10 +61,10 @@ nonEmptySpec =
        in (y : ys) `shouldBe` xs
 
     it "calculates foldr like foldr for non empty list" $ do
-      foldr (\cur acc -> acc * 10 + cur) 0 (1 :| [2, 3, 4, 5]) `shouldBe` (54321 :: Int)
+      property checkFoldr
 
     it "calculates foldl like foldr for non empty list" $ do
-      foldl (\acc cur -> acc * 10 + cur) 0 (1 :| [2, 3, 4, 5]) `shouldBe` (12345 :: Int)
+      property checkFoldl
 
   where
     checkFmap :: Int -> [Int] -> Bool
@@ -81,3 +75,21 @@ nonEmptySpec =
       let mappedList = fmap f (x : xs)
           (y :| ys) = fmap f (x :| xs)
        in (mappedList == y : ys)
+
+    checkFoldr :: Int -> [Int] -> Bool
+    checkFoldr x xs =
+      foldr foldrF 0 (x :| xs) == foldr foldrF 0 (x : xs)
+
+    foldrF :: Int -> Int -> Int
+    foldrF cur acc = acc * 10 + cur
+
+    checkFoldl :: Int -> [Int] -> Bool
+    checkFoldl x xs = foldl foldlF 0 (x :| xs) == foldl foldlF 0 (x : xs)
+
+    foldlF :: Int -> Int -> Int
+    foldlF acc cur = acc * 10 + cur
+
+    checkApplicative :: Int -> [Int] -> Int -> [Int] -> Bool
+    checkApplicative x xs y ys =
+      let r :| rs = (+) <$> (x :| xs) <*> (y :| ys)
+       in (r : rs) == ((+) <$> (x : xs) <*> (y : ys))

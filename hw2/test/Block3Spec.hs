@@ -180,6 +180,9 @@ numbersListsParserSpec =
     it "parses non empty lists" $ do
       runParser numbersListsParser "2, 1,+10  , 3,5,-7, 2" `shouldBe` Just ([[1, 10], [5, -7, 2]] :: [[Int]], "")
 
+    it "parses lists when whitespaces present in the beginning of the line" $ do
+      runParser numbersListsParser "      2, 1,+10  , 3,5,-7, 2" `shouldBe` Just ([[1, 10], [5, -7, 2]] :: [[Int]], "")
+
     it "parses length with signs" $ do
       runParser numbersListsParser "+2, -1,+10  , +3,+5,-7, 2" `shouldBe` Just ([[-1, 10], [5, -7, 2]] :: [[Int]], "")
 

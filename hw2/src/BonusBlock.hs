@@ -18,7 +18,7 @@ module BonusBlock
   , kernelIO
   ) where
 
-import Control.Monad.State (State, get, put, runState)
+import Control.Monad.State (StateT, evalStateT, lift, put, runState, get, State)
 import Data.Void (Void)
 
 newtype Cont r a = Cont
@@ -50,8 +50,8 @@ pop Queue {headList = curHeadList, tailList = []} =
     first:others -> Just (first, Queue {headList = [], tailList = others})
     []           -> Nothing
 
-push :: Queue a -> a -> Queue a
-push q@Queue {headList = curHeadList} x = q {headList = x : curHeadList}
+push :: a -> Queue a -> Queue a
+push x q@Queue {headList = curHeadList} = q {headList = x : curHeadList}
 
 data KernelState = KernelState
   { readyProcesses :: Queue ReadyProcess
@@ -109,7 +109,7 @@ exitAction _ = return ()
 addProcess :: ReadyProcess -> State KernelState ()
 addProcess process = do
   curKernelState@KernelState {readyProcesses = curRunning} <- get
-  let newRunning = push curRunning process
+  let newRunning = push process curRunning
   put curKernelState {readyProcesses = newRunning}
 
 kernelPlaygroundImpl :: State KernelState ()
@@ -129,34 +129,48 @@ kernelPlaygroundImpl = do
 
 kernelPlayground :: Cont Syscall Void -> String -> String
 kernelPlayground process input =
-  let f :: Void -> Syscall
-      f _ = ExitSyscall f
-      initProc = ReadyProcess (runCont process) f
+  let initProc = ReadyProcess (runCont process) lastCont
       initState = KernelState {readyProcesses = singleton initProc, stdin = input, stdout = ""}
       (_, finalKernel) = runState kernelPlaygroundImpl initState
    in stdout finalKernel
 
-kernelIOImpl :: Queue Syscall -> IO ()
-kernelIOImpl queue =
+lastCont :: Void -> Syscall
+lastCont _ = ExitSyscall lastCont
+
+pushState :: Monad m => a -> StateT (Queue a) m ()
+pushState x = do
+  curQueue <- get
+  let newQueue = push x curQueue
+  put newQueue
+
+
+kernelIOImpl :: StateT (Queue Syscall) IO ()
+kernelIOImpl = do
+  queue <- get
   case pop queue of
     Nothing -> return ()
-    Just (ReadSyscall onRead, popped) -> do
-      s <- getLine
-      kernelIOImpl $ push popped (onRead s)
-    Just (WriteSyscall s onWrite, popped) -> do
-      putStrLn s
-      kernelIOImpl $ push popped (onWrite ())
-    Just (ExitSyscall _, popped) -> kernelIOImpl popped
-    Just (ForkSyscall onFork, popped) -> do
-      let newQueue = push popped (onFork Child)
-      kernelIOImpl $ push newQueue (onFork Parent)
-    Just (YieldSyscall onReturn, popped) -> kernelIOImpl $ push popped (onReturn ())
+    Just (syscall, poppedQueue) -> do
+      put poppedQueue
+      case syscall of
+        ReadSyscall onRead -> do
+          s <- lift getLine
+          pushState (onRead s)
+          kernelIOImpl
+        WriteSyscall s onWrite -> do
+          lift $ putStrLn s
+          pushState (onWrite ())
+          kernelIOImpl
+        ExitSyscall _ -> kernelIOImpl
+        ForkSyscall onFork -> do
+          pushState (onFork Child)
+          pushState (onFork Parent)
+          kernelIOImpl
+        YieldSyscall onReturn -> do
+          pushState (onReturn ())
+          kernelIOImpl
 
 kernelIO :: Cont Syscall Void -> IO ()
-kernelIO process =
-  let f :: Void -> Syscall
-      f _ = ExitSyscall f
-   in kernelIOImpl $ singleton $ runCont process (\_ -> ExitSyscall f)
+kernelIO process = evalStateT kernelIOImpl (singleton $ runCont process (\_ -> ExitSyscall lastCont))
 
 readLine :: Cont Syscall String
 readLine = Cont $ \c -> ReadSyscall c

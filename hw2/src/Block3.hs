@@ -157,13 +157,13 @@ skipDelimeters = do
   skipWhitespaces
   _ <- element ','
   skipWhitespaces
-  where
-    skipWhitespaces :: Parser Char ()
-    skipWhitespaces = skipSingleOrMoreWhitespaces <|> ok
-    skipSingleOrMoreWhitespaces :: Parser Char ()
-    skipSingleOrMoreWhitespaces = do
-      _ <- satisfy isSpace
-      skipWhitespaces
+
+skipWhitespaces :: Parser Char ()
+skipWhitespaces = skipSingleOrMoreWhitespaces <|> ok
+skipSingleOrMoreWhitespaces :: Parser Char ()
+skipSingleOrMoreWhitespaces = do
+  _ <- satisfy isSpace
+  skipWhitespaces
 
 numbersListParser ::
      forall t. (Num t, Ord t)
@@ -186,7 +186,9 @@ numbersListParser = do
 numbersListsParser ::
      forall t. (Num t, Ord t)
   => Parser Char [[t]]
-numbersListsParser = nonEmptyParser <|> nilParser
+numbersListsParser = do
+  skipWhitespaces
+  nonEmptyParser <|> nilParser
   where
     nonEmptyParser :: Parser Char [[t]]
     nonEmptyParser = do

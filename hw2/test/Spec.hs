@@ -6,7 +6,7 @@ import Block1Spec (nonEmptySpec, stringSumSpec, treeSpec)
 import Block3Spec (correctBracketSequenceSpec, elementParserSpec, eofParserSpec, numberParserSpec,
                   numbersListsParserSpec, okParserSpec, satisfyParserSpec, streamParserSpec, parserSpec)
 import Block2Spec (evalSpec, movingAverageSpec)
-import BonusBlockSpec (contSpec, monadContSpec, trivialContSpec)
+import BonusBlockSpec (contSpec, monadContSpec, trivialContSpec, kernelPlaygroundSpec)
 import Test.Hspec (hspec)
 
 main :: IO ()
@@ -15,6 +15,8 @@ main =
     Block1Spec.stringSumSpec
     Block1Spec.treeSpec
     Block1Spec.nonEmptySpec
+    Block2Spec.movingAverageSpec
+    Block2Spec.evalSpec
     Block3Spec.elementParserSpec
     Block3Spec.eofParserSpec
     Block3Spec.okParserSpec
@@ -27,5 +29,4 @@ main =
     BonusBlockSpec.trivialContSpec
     BonusBlockSpec.contSpec
     BonusBlockSpec.monadContSpec
-    Block2Spec.movingAverageSpec
-    Block2Spec.evalSpec
+    BonusBlockSpec.kernelPlaygroundSpec
