@@ -6,7 +6,7 @@ module BonusBlockSpec
   ) where
 
 import Test.Hspec (SpecWith, describe, it, shouldBe)
-import BonusBlock (Cont (..), kernelPlayground, example, forkExample, yieldExample)
+import BonusBlock (Cont (..), kernelPlayground, example, forkExample, yieldExample, longForkExample)
 
 trivialContSpec :: SpecWith ()
 trivialContSpec =
@@ -101,3 +101,5 @@ kernelPlaygroundSpec =
       kernelPlayground forkExample "name1\nname2" `shouldBe` "Hello from child process\nHello, name1, from parent process\n"
     it "processes fork-yield actions" $ do
       kernelPlayground yieldExample "name1\nname2" `shouldBe` "Hello from child process, child process is yielding\nHello, name1, from parent process\nChild process is back!\n"
+    it "run processes in sequence, without yields" $ do
+      kernelPlayground longForkExample "name1\nname2" `shouldBe` "Hello from child process\nChild process continues running\nHello, name1, from parent process\n"

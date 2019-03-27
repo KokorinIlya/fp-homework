@@ -8,7 +8,6 @@ module Block3
   , correctBracketSequenceParser
   , element
   , eof
-  , numbersListParser
   , numbersListsParser
   , numberParser
   , ok
@@ -19,6 +18,7 @@ module Block3
 import Control.Applicative (Alternative (..))
 import Data.Char (isDigit, isSpace)
 import Data.Functor ((<$))
+
 import Utils (mapFirst)
 
 newtype Parser s a = Parser
@@ -47,7 +47,7 @@ instance Monad (Parser s) where
       pb remainder
 
 ok :: Parser s ()
-ok = Parser $ \input -> Just ((), input)
+ok = return ()
 
 eof :: forall s. Parser s ()
 eof = Parser checkStreamIsEmpty
@@ -63,7 +63,7 @@ satisfy predicate = Parser checkSymbol
     checkSymbol [] = Nothing
     checkSymbol (x:xs)
       | predicate x = Just (x, xs)
-      | otherwise = Nothing
+      | otherwise   = Nothing
 
 element :: Eq s => s -> Parser s s
 element el = satisfy (== el)
@@ -75,11 +75,11 @@ stream ::
 stream streamToParse = Parser $ fmap (streamToParse, ) . cutIfPrefix streamToParse
   where
     cutIfPrefix :: [a] -> [a] -> Maybe [a]
-    cutIfPrefix [] [] = Just []
+    cutIfPrefix [] []           = Just []
     cutIfPrefix [] second@(_:_) = Just second
-    cutIfPrefix (_:_) [] = Nothing
+    cutIfPrefix (_:_) []        = Nothing
     cutIfPrefix (x:xs) (y:ys)
-      | x == y = cutIfPrefix xs ys
+      | x == y    = cutIfPrefix xs ys
       | otherwise = Nothing
 
 data CorrectBracketSequence
@@ -160,10 +160,11 @@ skipDelimeters = do
 
 skipWhitespaces :: Parser Char ()
 skipWhitespaces = skipSingleOrMoreWhitespaces <|> ok
-skipSingleOrMoreWhitespaces :: Parser Char ()
-skipSingleOrMoreWhitespaces = do
-  _ <- satisfy isSpace
-  skipWhitespaces
+  where
+    skipSingleOrMoreWhitespaces :: Parser Char ()
+    skipSingleOrMoreWhitespaces = do
+      _ <- satisfy isSpace
+      skipWhitespaces
 
 numbersListParser ::
      forall t. (Num t, Ord t)
@@ -176,12 +177,12 @@ numbersListParser = do
   where
     listOfKnownLengthParser :: t -> Parser Char [t]
     listOfKnownLengthParser len
-      | len == 0 = return []
-      | otherwise = do
+      | len > 0 = do
         skipDelimeters
         curElem <- numberParser
         elemsTail <- listOfKnownLengthParser (len - 1)
         return $ curElem : elemsTail
+      | otherwise = return []
 
 numbersListsParser ::
      forall t. (Num t, Ord t)

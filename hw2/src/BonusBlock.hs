@@ -13,6 +13,7 @@ module BonusBlock
   , exit
   , fork
   , forkExample
+  , longForkExample
   , yield
   , yieldExample
   , kernelIO
@@ -20,6 +21,7 @@ module BonusBlock
 
 import Control.Monad.State (StateT, evalStateT, lift, put, runState, get, State)
 import Data.Void (Void)
+import Data.Dequeue (BankersDequeue, pushBack, pushFront, popFront, fromList)
 
 newtype Cont r a = Cont
   { runCont :: (a -> r) -> r
@@ -35,26 +37,8 @@ instance Applicative (Cont r) where
 instance Monad (Cont r) where
   (Cont cont) >>= f = Cont $ \onComplete -> cont (\aValue -> runCont (f aValue) onComplete)
 
-data Queue a = Queue
-  { headList :: [a]
-  , tailList :: [a]
-  }
-
-singleton :: a -> Queue a
-singleton x = Queue {tailList = [x], headList = []}
-
-pop :: Queue a -> Maybe (a, Queue a)
-pop q@Queue {tailList = first:others} = Just (first, q {tailList = others})
-pop Queue {headList = curHeadList, tailList = []} =
-  case reverse curHeadList of
-    first:others -> Just (first, Queue {headList = [], tailList = others})
-    []           -> Nothing
-
-push :: a -> Queue a -> Queue a
-push x q@Queue {headList = curHeadList} = q {headList = x : curHeadList}
-
 data KernelState = KernelState
-  { readyProcesses :: Queue ReadyProcess
+  { readyProcesses :: BankersDequeue ReadyProcess
   , stdin          :: String
   , stdout         :: String
   }
@@ -79,12 +63,12 @@ data ReadyProcess = forall r. ReadyProcess
   }
 
 yieldAction :: Waiting () -> State KernelState ()
-yieldAction onReturn = addProcess $ ReadyProcess onReturn ()
+yieldAction onReturn = pushBackProcess $ ReadyProcess onReturn ()
 
 forkAction :: Waiting ForkTag -> State KernelState ()
 forkAction onFork = do
-  addProcess $ ReadyProcess onFork Child
-  addProcess $ ReadyProcess onFork Parent
+  pushFrontProcess $ ReadyProcess onFork Parent
+  pushFrontProcess $ ReadyProcess onFork Child
 
 readLineAction :: Waiting String -> State KernelState ()
 readLineAction onRead = do
@@ -95,27 +79,33 @@ readLineAction onRead = do
           []         -> []
           (_:others) -> others
   put curKernelState {stdin = newStdin}
-  addProcess $ ReadyProcess onRead readed
+  pushFrontProcess $ ReadyProcess onRead readed
 
 writeLineAction :: String -> Waiting () -> State KernelState ()
 writeLineAction s onWrite = do
   curKernel@KernelState {stdout = curStdout} <- get
   put curKernel {stdout = curStdout ++ s ++ "\n"}
-  addProcess $ ReadyProcess onWrite ()
+  pushFrontProcess $ ReadyProcess onWrite ()
 
 exitAction :: Waiting Void -> State KernelState ()
 exitAction _ = return ()
 
-addProcess :: ReadyProcess -> State KernelState ()
-addProcess process = do
+pushBackProcess :: ReadyProcess -> State KernelState ()
+pushBackProcess process = do
   curKernelState@KernelState {readyProcesses = curRunning} <- get
-  let newRunning = push process curRunning
+  let newRunning = pushBack curRunning process
+  put curKernelState {readyProcesses = newRunning}
+
+pushFrontProcess :: ReadyProcess -> State KernelState ()
+pushFrontProcess process = do
+  curKernelState@KernelState {readyProcesses = curRunning} <- get
+  let newRunning = pushFront curRunning process
   put curKernelState {readyProcesses = newRunning}
 
 kernelPlaygroundImpl :: State KernelState ()
 kernelPlaygroundImpl = do
   curKernel@KernelState {readyProcesses = curReady} <- get
-  case pop curReady of
+  case popFront curReady of
     Nothing -> return ()
     Just (ReadyProcess {computationToNextSyscall = curCompuation, processState = curState}, q) -> do
       put curKernel {readyProcesses = q}
@@ -130,47 +120,52 @@ kernelPlaygroundImpl = do
 kernelPlayground :: Cont Syscall Void -> String -> String
 kernelPlayground process input =
   let initProc = ReadyProcess (runCont process) lastCont
-      initState = KernelState {readyProcesses = singleton initProc, stdin = input, stdout = ""}
+      initState = KernelState {readyProcesses = fromList [initProc], stdin = input, stdout = ""}
       (_, finalKernel) = runState kernelPlaygroundImpl initState
    in stdout finalKernel
 
 lastCont :: Void -> Syscall
 lastCont _ = ExitSyscall lastCont
 
-pushState :: Monad m => a -> StateT (Queue a) m ()
-pushState x = do
+pushBackState :: Monad m => a -> StateT (BankersDequeue a) m ()
+pushBackState x = do
   curQueue <- get
-  let newQueue = push x curQueue
+  let newQueue = pushBack curQueue x
   put newQueue
 
+pushFrontState :: Monad m => a -> StateT (BankersDequeue a) m ()
+pushFrontState x = do
+  curQueue <- get
+  let newQueue = pushFront curQueue x
+  put newQueue
 
-kernelIOImpl :: StateT (Queue Syscall) IO ()
+kernelIOImpl :: StateT (BankersDequeue Syscall) IO ()
 kernelIOImpl = do
   queue <- get
-  case pop queue of
+  case popFront queue of
     Nothing -> return ()
     Just (syscall, poppedQueue) -> do
       put poppedQueue
       case syscall of
         ReadSyscall onRead -> do
           s <- lift getLine
-          pushState (onRead s)
+          pushFrontState (onRead s)
           kernelIOImpl
         WriteSyscall s onWrite -> do
           lift $ putStrLn s
-          pushState (onWrite ())
+          pushFrontState (onWrite ())
           kernelIOImpl
         ExitSyscall _ -> kernelIOImpl
         ForkSyscall onFork -> do
-          pushState (onFork Child)
-          pushState (onFork Parent)
+          pushFrontState (onFork Parent)
+          pushFrontState (onFork Child)
           kernelIOImpl
         YieldSyscall onReturn -> do
-          pushState (onReturn ())
+          pushBackState (onReturn ())
           kernelIOImpl
 
 kernelIO :: Cont Syscall Void -> IO ()
-kernelIO process = evalStateT kernelIOImpl (singleton $ runCont process (\_ -> ExitSyscall lastCont))
+kernelIO process = evalStateT kernelIOImpl (fromList [runCont process (\_ -> ExitSyscall lastCont)])
 
 readLine :: Cont Syscall String
 readLine = Cont $ \c -> ReadSyscall c
@@ -203,6 +198,20 @@ forkExample = do
   case pid of
     Child -> do
       writeLine "Hello from child process"
+      exit
+    Parent -> do
+      s <- readLine
+      let str = "Hello, " ++ s ++ ", from parent process"
+      writeLine str
+      exit
+
+longForkExample :: Cont Syscall Void
+longForkExample = do
+  pid <- fork
+  case pid of
+    Child -> do
+      writeLine "Hello from child process"
+      writeLine "Child process continues running"
       exit
     Parent -> do
       s <- readLine
