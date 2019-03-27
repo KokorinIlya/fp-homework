@@ -16,16 +16,11 @@ import Block1 (NonEmpty (..))
 
 data Expression
   = Const Int
-  | Addition Expression
-             Expression
-  | Subtraction Expression
-                Expression
-  | Multiplication Expression
-                   Expression
-  | Division Expression
-             Expression
-  | Power Expression
-          Expression
+  | Addition Expression Expression
+  | Subtraction Expression Expression
+  | Multiplication Expression Expression
+  | Division Expression Expression
+  | Power Expression Expression
   | Negation Expression
 
 data ArithmeticError
@@ -35,8 +30,8 @@ data ArithmeticError
 
 instance Eq ArithmeticError where
   DivisionByZero == DivisionByZero = True
-  NegativePow == NegativePow = True
-  _ == _ = False
+  NegativePow == NegativePow       = True
+  _ == _                           = False
 
 returnError :: a -> Either a b
 returnError = Left

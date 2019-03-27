@@ -10,8 +10,7 @@ stringSum :: (Num t, Read t) => String -> Maybe t
 stringSum = fmap sum . traverse readMaybe . words
 
 data Tree a
-  = Branch (Tree a)
-           (Tree a)
+  = Branch (Tree a) (Tree a)
   | Leaf a
 
 instance Show a => Show (Tree a) where

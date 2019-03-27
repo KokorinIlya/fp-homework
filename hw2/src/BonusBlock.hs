@@ -51,8 +51,7 @@ data ForkTag
 
 data Syscall
   = ReadSyscall (Waiting String)
-  | WriteSyscall String
-                 (Waiting ())
+  | WriteSyscall String (Waiting ())
   | ExitSyscall (Waiting Void)
   | ForkSyscall (Waiting ForkTag)
   | YieldSyscall (Waiting ())

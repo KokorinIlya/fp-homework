@@ -85,8 +85,7 @@ stream streamToParse = Parser $ fmap (streamToParse, ) . cutIfPrefix streamToPar
 data CorrectBracketSequence
   = Empty -- empty
   | Inner CorrectBracketSequence -- (s)
-  | Concatenation CorrectBracketSequence
-                  CorrectBracketSequence -- s1 s2
+  | Concatenation CorrectBracketSequence CorrectBracketSequence -- s1 s2
 
 instance Show CorrectBracketSequence where
   show Empty               = ""
