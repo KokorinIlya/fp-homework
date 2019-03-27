@@ -1,12 +1,13 @@
 module Block1Spec
-  ( stringSumSpec
+  ( nonEmptySpec
+  , stringSumSpec
   , treeSpec
-  , nonEmptySpec
   ) where
 
-import Test.Hspec (describe, it, SpecWith, shouldBe)
+import Test.Hspec (SpecWith, describe, it, shouldBe)
 import Test.QuickCheck (property)
-import Block1 (stringSum, Tree (..), NonEmpty (..))
+
+import Block1 (NonEmpty (..), Tree(..), stringSum)
 
 stringSumSpec :: SpecWith ()
 stringSumSpec =

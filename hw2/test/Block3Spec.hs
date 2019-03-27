@@ -5,28 +5,18 @@ module Block3Spec
   , numberParserSpec
   , numbersListsParserSpec
   , okParserSpec
+  , parserSpec
   , satisfyParserSpec
   , streamParserSpec
-  , parserSpec
   ) where
 
-import Block3
-  ( CorrectBracketSequence
-  , Parser (..)
-  , correctBracketSequenceParser
-  , element
-  , numberParser
-  , numbersListsParser
-  , eof
-  , ok
-  , satisfy
-  , stream
-  )
-
-import Test.QuickCheck (property)
 import Data.Char (isDigit)
-import Test.Hspec (SpecWith, describe, it, shouldBe)
 import Data.Maybe (isNothing)
+import Test.Hspec (SpecWith, describe, it, shouldBe)
+import Test.QuickCheck (property)
+
+import Block3 (CorrectBracketSequence (..), Parser (..), correctBracketSequenceParser, element, eof,
+               numberParser, numbersListsParser, ok, satisfy, stream)
 import Utils (mapFirst)
 
 parserSpec :: SpecWith ()

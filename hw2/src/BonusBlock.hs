@@ -2,26 +2,26 @@
 
 module BonusBlock
   ( Cont(..)
+  , ForkTag(..)
+  , ReadyProcess(..)
   , Syscall(..)
   , Waiting
-  , ReadyProcess(..)
-  , ForkTag(..)
-  , kernelPlayground
-  , readLine
   , example
-  , writeLine
   , exit
   , fork
   , forkExample
+  , kernelIO
+  , kernelPlayground
   , longForkExample
+  , readLine
+  , writeLine
   , yield
   , yieldExample
-  , kernelIO
   ) where
 
-import Control.Monad.State (StateT, evalStateT, lift, put, runState, get, State)
+import Control.Monad.State (State, StateT, evalStateT, get, lift, put, runState)
+import Data.Dequeue (BankersDequeue, fromList, popFront, pushBack, pushFront)
 import Data.Void (Void)
-import Data.Dequeue (BankersDequeue, pushBack, pushFront, popFront, fromList)
 
 newtype Cont r a = Cont
   { runCont :: (a -> r) -> r
@@ -62,34 +62,6 @@ data ReadyProcess = forall r. ReadyProcess
   , processState             :: r
   }
 
-yieldAction :: Waiting () -> State KernelState ()
-yieldAction onReturn = pushBackProcess $ ReadyProcess onReturn ()
-
-forkAction :: Waiting ForkTag -> State KernelState ()
-forkAction onFork = do
-  pushFrontProcess $ ReadyProcess onFork Parent
-  pushFrontProcess $ ReadyProcess onFork Child
-
-readLineAction :: Waiting String -> State KernelState ()
-readLineAction onRead = do
-  curKernelState@KernelState {stdin = curStdin} <- get
-  let (readed, rest) = span (/= '\n') curStdin
-  let newStdin =
-        case rest of
-          []         -> []
-          (_:others) -> others
-  put curKernelState {stdin = newStdin}
-  pushFrontProcess $ ReadyProcess onRead readed
-
-writeLineAction :: String -> Waiting () -> State KernelState ()
-writeLineAction s onWrite = do
-  curKernel@KernelState {stdout = curStdout} <- get
-  put curKernel {stdout = curStdout ++ s ++ "\n"}
-  pushFrontProcess $ ReadyProcess onWrite ()
-
-exitAction :: Waiting Void -> State KernelState ()
-exitAction _ = return ()
-
 pushBackProcess :: ReadyProcess -> State KernelState ()
 pushBackProcess process = do
   curKernelState@KernelState {readyProcesses = curRunning} <- get
@@ -104,17 +76,29 @@ pushFrontProcess process = do
 
 kernelPlaygroundImpl :: State KernelState ()
 kernelPlaygroundImpl = do
-  curKernel@KernelState {readyProcesses = curReady} <- get
+  curKernel@KernelState {readyProcesses = curReady, stdin = curStdin, stdout = curStdout} <- get
   case popFront curReady of
     Nothing -> return ()
     Just (ReadyProcess {computationToNextSyscall = curCompuation, processState = curState}, q) -> do
-      put curKernel {readyProcesses = q}
       case curCompuation curState of
-        ReadSyscall onRead     -> readLineAction onRead
-        WriteSyscall s onWrite -> writeLineAction s onWrite
-        ExitSyscall onExit     -> exitAction onExit
-        ForkSyscall onFork     -> forkAction onFork
-        YieldSyscall onReturn  -> yieldAction onReturn
+        ReadSyscall onRead -> do
+          let (readed, rest) = span (/= '\n') curStdin
+          let newStdin =
+                case rest of
+                  []         -> []
+                  (_:others) -> others
+          put curKernel {stdin = newStdin, readyProcesses = q}
+          pushFrontProcess $ ReadyProcess onRead readed
+        WriteSyscall s onWrite ->
+          put curKernel {stdout = curStdout ++ s ++ "\n", readyProcesses = pushFront q (ReadyProcess onWrite ())}
+        ExitSyscall _ -> put curKernel {readyProcesses = q}
+        ForkSyscall onFork -> do
+          put curKernel {readyProcesses = q}
+          pushFrontProcess $ ReadyProcess onFork Parent
+          pushFrontProcess $ ReadyProcess onFork Child
+        YieldSyscall onReturn -> do
+          put curKernel {readyProcesses = q}
+          pushBackProcess $ ReadyProcess onReturn ()
       kernelPlaygroundImpl
 
 kernelPlayground :: Cont Syscall Void -> String -> String

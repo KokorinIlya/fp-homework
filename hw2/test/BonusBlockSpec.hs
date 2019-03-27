@@ -1,12 +1,13 @@
 module BonusBlockSpec
   ( contSpec
+  , kernelPlaygroundSpec
   , monadContSpec
   , trivialContSpec
-  , kernelPlaygroundSpec
   ) where
 
 import Test.Hspec (SpecWith, describe, it, shouldBe)
-import BonusBlock (Cont (..), kernelPlayground, example, forkExample, yieldExample, longForkExample)
+
+import BonusBlock (Cont (..), example, forkExample, kernelPlayground, longForkExample, yieldExample)
 
 trivialContSpec :: SpecWith ()
 trivialContSpec =
@@ -97,9 +98,12 @@ kernelPlaygroundSpec =
   describe "BonusBlock.kernelPlayground" $ do
     it "processes trivial sequence of actions" $ do
       kernelPlayground example "name1\nname2\nname3" `shouldBe` "Hello, name1!\nAlso, hello, name2!\n"
+
     it "processes fork actions" $ do
       kernelPlayground forkExample "name1\nname2" `shouldBe` "Hello from child process\nHello, name1, from parent process\n"
+
     it "processes fork-yield actions" $ do
       kernelPlayground yieldExample "name1\nname2" `shouldBe` "Hello from child process, child process is yielding\nHello, name1, from parent process\nChild process is back!\n"
+
     it "run processes in sequence, without yields" $ do
       kernelPlayground longForkExample "name1\nname2" `shouldBe` "Hello from child process\nChild process continues running\nHello, name1, from parent process\n"

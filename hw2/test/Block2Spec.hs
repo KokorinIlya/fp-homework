@@ -3,8 +3,9 @@ module Block2Spec
   , movingAverageSpec
   ) where
 
-import Test.Hspec (describe, it, SpecWith, shouldBe)
+import Test.Hspec (SpecWith, describe, it, shouldBe)
 import Test.QuickCheck (property)
+
 import Block2 (ArithmeticError (..), Expression (..), eval, moving)
 
 movingAverageSpec :: SpecWith ()
