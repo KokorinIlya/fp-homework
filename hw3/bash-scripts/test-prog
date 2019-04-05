@@ -1,8 +1,4 @@
-ac0_a='aba caba'; a=$0_a;
-
-
-var='$abacaba';
-
-
-
-
+a='aaa $1 bb'
+b=$2
+a=bc
+c=$b

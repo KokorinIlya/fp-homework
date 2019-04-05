@@ -43,7 +43,16 @@ assignedVariableParser :: Parsec ParsingError String Variable
 assignedVariableParser = single '$' *> variableParser
 
 assignmentRightParser :: Parsec ParsingError String AssignmentRight
-assignmentRightParser = (SingleQuotes <$> singleQuotesParser) <|> (VariableName <$> assignedVariableParser)
+assignmentRightParser =
+  (SingleQuotes <$> singleQuotesParser) <|> (VariableName <$> assignedVariableParser) <|>
+  (SingleQuotes <$> implicitSingleQuotesParser)
+
+  where
+    implicitSingleQuotesParser :: Parsec ParsingError String String
+    implicitSingleQuotesParser = nonEmptyImplicitSingleQuotesParser <|> return ""
+
+    nonEmptyImplicitSingleQuotesParser :: Parsec ParsingError String String
+    nonEmptyImplicitSingleQuotesParser = (:) <$> satisfy (not . isSpace) <*> implicitSingleQuotesParser
 
 data Assignment =
   Assignment Variable
