@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 
-a=b
-echo $a
+__='huy pizda'
+echo $__

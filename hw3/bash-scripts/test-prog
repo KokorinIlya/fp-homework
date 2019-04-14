@@ -1,4 +1,21 @@
-a='aaa $1 bb'
-b=$2
-a=bc
-c=$b
+echo 'Arguments:' $1 $2 $3
+
+bla=bla'bla'
+
+echo 'bla:' $bla
+
+read i1
+read i2
+
+echo 'Read two lines:' "$i1 and $i2"
+
+read n m
+
+echo -n Read a line with a word $n
+echo " and" rest of line: $m
+
+cd aba/caba/baba
+pwd
+
+exit 5
+echo "not reachable"
