@@ -3,7 +3,7 @@ module Main where
 import System.Environment (getArgs)
 import System.IO (IOMode(..), hGetContents, openFile)
 
-import Lib (processScript)
+import Interpreter (processScript)
 
 main :: IO ()
 main = do

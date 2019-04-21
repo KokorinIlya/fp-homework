@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
 
-__='huy pizda'
-echo $__
+if true; if true; then false; fi; then
+    echo байт
+fi;

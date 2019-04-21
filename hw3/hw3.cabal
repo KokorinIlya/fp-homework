@@ -18,7 +18,9 @@ tested-with:         GHC == 8.0.1
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Lib
+  exposed-modules:     Interpreter,
+                       Parser,
+                       ProgramStructure
   ghc-options:         -Wall
   build-depends:       base >= 4.9 && < 5,
                        megaparsec,
