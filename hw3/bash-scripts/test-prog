@@ -9,3 +9,4 @@ $ex$it 228 282
 pwd
 cd hw3
 pwd
+ls -l

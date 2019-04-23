@@ -20,6 +20,9 @@ import ProgramStructure (Assignment (..), Command (..), DoubleQuotesInner (..), 
                          Identifier (..), If (..), ImplicitQuotesInner (..), ShellCommand (..),
                          SingleQuotes (..), Variable (..), While (..))
 import System.Directory (getCurrentDirectory, setCurrentDirectory)
+import System.Exit (ExitCode (..))
+import System.IO (hGetContents)
+import System.Process (CreateProcess (..), StdStream (..), createProcess, proc, waitForProcess)
 import Text.Megaparsec (runParser)
 import Text.Read (readMaybe)
 
@@ -130,32 +133,46 @@ processCd args = do
   lift $ putStrLn $ "Wrong number of arguments in cd: " <> show args
   return $ JustReturn 1
 
+runExternalProcess :: String -> [String] -> ReaderT Environment IO ReturnStatus
+runExternalProcess processName processArgs = do
+  let processInfo = (proc processName processArgs) {cwd = Nothing, std_out = CreatePipe} -- TODO: add Inherit
+  (_, Just stdoutHandle, _, procHandle) <- lift $ createProcess processInfo
+  code <- lift $ waitForProcess procHandle
+  let returnStatus =
+        case code of
+          ExitSuccess   -> JustReturn 0
+          ExitFailure c -> JustReturn c
+  output <- lift $ hGetContents stdoutHandle
+  lift $ putStrLn output
+  return returnStatus
+
 processCommand :: Command -> ReaderT Environment IO ReturnStatus
 processCommand (AssignmentCommand (Assignment left right)) = do
-  env <- ask
-  curVariables <- lift $ readIORef $ env ^. variables
-  let curScriptsArgs = env ^. scriptArguments
+  curEnvironment <- ask
+  curVariables <- lift $ readIORef $ curEnvironment ^. variables
+  let curScriptsArgs = curEnvironment ^. scriptArguments
   let rightString = processImplicitQuotes curVariables curScriptsArgs right
   --lift $ putStrLn $ "Variable: " <> show left <> ", value: " <> rightString
-  lift $ writeIORef (env ^. variables) (Map.insert left rightString curVariables)
+  lift $ writeIORef (curEnvironment ^. variables) (Map.insert left rightString curVariables)
   return $ JustReturn 0
 processCommand (CallCommand (ShellCommand commandParts)) = do
-  env <- ask
-  curVariables <- lift $ readIORef $ env ^. variables
-  let curScriptsArgs = env ^. scriptArguments
+  curEnvironment <- ask
+  curVariables <- lift $ readIORef $ curEnvironment ^. variables
+  let curScriptsArgs = curEnvironment ^. scriptArguments
   let command :| commandArguments = makeCommand curVariables curScriptsArgs commandParts
   case command of
     "read" -> do
       maybeReadedLine <- lift $ (Just <$> getLine) `catch` failWithMessage "Error while reading line" Nothing
       case maybeReadedLine of
         Just readedLine -> do
-          lift $ writeIORef (env ^. variables) (processRead commandArguments readedLine curVariables)
+          lift $ writeIORef (curEnvironment ^. variables) (processRead commandArguments readedLine curVariables)
           return $ JustReturn 0
         Nothing -> return $ JustReturn 1
     "echo" -> processEcho commandArguments
     "pwd" -> processPwd
     "exit" -> lift $ processExit commandArguments
     "cd" -> processCd commandArguments
+    _ -> runExternalProcess command commandArguments
   {-lift $ putStrLn $ f x
   return $ JustReturn 0
   where
