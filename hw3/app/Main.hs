@@ -1,16 +1,16 @@
 module Main where
 
 import System.Environment (getArgs)
-import System.IO (IOMode(..), hGetContents, openFile)
+import System.IO (IOMode (..), hGetContents, openFile)
 
-import Interpreter (processScript)
+import Interpreter (parseAndProcessScript)
 
 main :: IO ()
 main = do
   programArguments <- getArgs
   case programArguments of
-    [] -> putStrLn "Expected file with script"
-    scriptFileName:scriptArguments -> do
+    [] -> putStrLn "Expected name of the file with script"
+    scriptFileName:_ -> do
       scriptFile <- openFile scriptFileName ReadMode
       script <- hGetContents scriptFile
-      processScript script scriptArguments
+      parseAndProcessScript script programArguments

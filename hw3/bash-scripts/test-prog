@@ -1,1 +1,11 @@
-a=echo"-n$a"
+a=a_string
+b=b_string"qts$1"$2$a
+c=a
+read a b $c
+echo "a and b are: "$a", "$b
+ex=ex
+it=it
+$ex$it 228 282
+pwd
+cd hw3
+pwd

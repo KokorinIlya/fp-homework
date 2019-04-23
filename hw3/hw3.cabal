@@ -24,22 +24,27 @@ library
   ghc-options:         -Wall
   build-depends:       base >= 4.9 && < 5,
                        megaparsec,
-                       mtl
+                       mtl,
+                       containers,
+                       microlens,
+                       microlens-th,
+                       transformers,
+                       directory
   default-language:    Haskell2010
 
 executable hw3
   hs-source-dirs:      app
   main-is:             Main.hs
   ghc-options:         -Wall -Werror -threaded -rtsopts -with-rtsopts=-N
-  build-depends:       base
-                     , hw3
+  build-depends:       base,
+                       hw3
   default-language:    Haskell2010
 
 test-suite hw3-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             Spec.hs
-  build-depends:       base
-                     , hw3
+  build-depends:       base,
+                       hw3
   ghc-options:         -Wall -Werror -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
