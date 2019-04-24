@@ -48,30 +48,60 @@ data ReturnStatus
   | JustReturn Int
   deriving (Show)
 
-processDoubleQuotes :: Map.Map Identifier String -> Map.Map Int String -> DoubleQuotesInner -> String
-processDoubleQuotes _ _ DoubleQuotesEnd = ""
-processDoubleQuotes vars args (DoubleQuotesSimpleString s r) = s <> processDoubleQuotes vars args r
-processDoubleQuotes vars args (DoubleQuotesVariableRef (IdentifiedVariable identifier) r) =
-  let variableValue = Map.findWithDefault "" identifier vars
-   in variableValue <> processDoubleQuotes vars args r
-processDoubleQuotes vars args (DoubleQuotesVariableRef (ScriptArgument argNumber) r) =
-  let argumentValue = Map.findWithDefault "" argNumber args
-   in argumentValue <> processDoubleQuotes vars args r
+processDoubleQuotes :: DoubleQuotesInner -> ReaderT Environment IO String
+processDoubleQuotes DoubleQuotesEnd = return ""
+processDoubleQuotes (DoubleQuotesSimpleString s r) = do
+  remainder <- processDoubleQuotes r
+  return $ s <> remainder
+processDoubleQuotes (DoubleQuotesVariableRef (IdentifiedVariable identifier) r) = do
+  curEnvironment <- ask
+  curVariableMap <- lift $ readIORef (curEnvironment ^. variables)
+  let variableValue = Map.findWithDefault "" identifier curVariableMap
+  remainder <- processDoubleQuotes r
+  return $ variableValue <> remainder
+processDoubleQuotes (DoubleQuotesVariableRef (ScriptArgument argNumber) r) = do
+  curEnvironment <- ask
+  let argumentValue = Map.findWithDefault "" argNumber (curEnvironment ^. scriptArguments)
+  remainder <- processDoubleQuotes r
+  return $ argumentValue <> remainder
+processDoubleQuotes (DoubleQuotesVariableRef (InlineCall commands) r) = do
+  inlineCallResult <- processInlineCall commands
+  remainder <- processDoubleQuotes r
+  return $ inlineCallResult <> remainder
 
-processImplicitQuotes :: Map.Map Identifier String -> Map.Map Int String -> ImplicitQuotesInner -> String
-processImplicitQuotes _ _ ImplicitQuotesEnd = ""
-processImplicitQuotes vars args (ImplicitQuotesVariableRef (IdentifiedVariable identifier) r) =
-  let variableValue = Map.findWithDefault "" identifier vars
-   in variableValue <> processImplicitQuotes vars args r
-processImplicitQuotes vars args (ImplicitQuotesVariableRef (ScriptArgument argNumber) r) =
-  let argumentValue = Map.findWithDefault "" argNumber args
-   in argumentValue <> processImplicitQuotes vars args r
-processImplicitQuotes vars args (ImplicitQuotesSimpleString s r) = s <> processImplicitQuotes vars args r
-processImplicitQuotes vars args (ImplicitQuotesDoubleQuotes quotes r) =
-  processDoubleQuotes vars args quotes <> processImplicitQuotes vars args r
+processImplicitQuotes :: ImplicitQuotesInner -> ReaderT Environment IO String
+processImplicitQuotes ImplicitQuotesEnd = return ""
+processImplicitQuotes (ImplicitQuotesSimpleString s r) = do
+  remainder <- processImplicitQuotes r
+  return $ s <> remainder
+processImplicitQuotes (ImplicitQuotesVariableRef (IdentifiedVariable identifier) r) = do
+  curEnvironment <- ask
+  curVariableMap <- lift $ readIORef (curEnvironment ^. variables)
+  let variableValue = Map.findWithDefault "" identifier curVariableMap
+  remainder <- processImplicitQuotes r
+  return $ variableValue <> remainder
+processImplicitQuotes (ImplicitQuotesVariableRef (ScriptArgument argNumber) r) = do
+  curEnvironment <- ask
+  let argumentValue = Map.findWithDefault "" argNumber (curEnvironment ^. scriptArguments)
+  remainder <- processImplicitQuotes r
+  return $ argumentValue <> remainder
+processImplicitQuotes (ImplicitQuotesDoubleQuotes quotes r) = do
+  curString <- processDoubleQuotes quotes
+  remainder <- processImplicitQuotes r
+  return $ curString <> remainder
+processImplicitQuotes (ImplicitQuotesVariableRef (InlineCall commands) r) = do
+  inlineCallResult <- processInlineCall commands
+  remainder <- processImplicitQuotes r
+  return $ inlineCallResult <> remainder
 
-makeCommand :: Map.Map Identifier String -> Map.Map Int String -> NonEmpty ImplicitQuotesInner -> NonEmpty String
-makeCommand curVariables curScriptsArgs = fmap (processImplicitQuotes curVariables curScriptsArgs)
+makeCommand :: NonEmpty ImplicitQuotesInner -> ReaderT Environment IO (NonEmpty String)
+makeCommand (argument :| []) = do
+  mappedArgument <- processImplicitQuotes argument
+  return $ mappedArgument :| []
+makeCommand (argument :| (secondArgument:otherArguments)) = do
+  mappedArgument <- processImplicitQuotes argument
+  secondMappedArgument :| otherMappedArguments <- makeCommand (secondArgument :| otherArguments)
+  return $ mappedArgument :| (secondMappedArgument : otherMappedArguments)
 
 processRead :: [String] -> String -> Map.Map Identifier String -> Map.Map Identifier String
 processRead variableNames readedLine =
@@ -158,8 +188,17 @@ runExternalProcess pName pArgs = do
               ExitSuccess   -> JustReturn 0
               ExitFailure c -> JustReturn c
       output <- lift $ MaybeT $ safeRunIO (hGetContents stdoutHandle) Just "Error while getting process output" Nothing
-      lift $ MaybeT $ safeRunIO (putStrLn output) Just "Error while printing process output" Nothing
+      processOutput output
       return returnStatus
+    processOutput :: String -> ReaderT Environment (MaybeT IO) ()
+    processOutput output = do
+      curEnvironment <- ask
+      if curEnvironment ^. inlineCallDepth > 0
+        then do
+          let curOutoutRef = curEnvironment ^. currentOutput
+          curOutputValue <- lift $ lift $ readIORef curOutoutRef
+          lift $ lift $ writeIORef curOutoutRef (curOutputValue <> output)
+        else lift $ MaybeT $ safeRunIO (putStrLn output) Just "Error while writing output" Nothing
 
 processWhile :: Int -> While -> ReaderT Environment IO ReturnStatus
 processWhile n while@While {whileConditions = curWhileConditions, whileActions = curWhileActions} = do
@@ -208,16 +247,14 @@ processCommand :: Command -> ReaderT Environment IO ReturnStatus
 processCommand (AssignmentCommand (Assignment left right)) = do
   curEnvironment <- ask
   curVariables <- lift $ readIORef $ curEnvironment ^. variables
-  let curScriptsArgs = curEnvironment ^. scriptArguments
-  let rightString = processImplicitQuotes curVariables curScriptsArgs right
+  rightString <- processImplicitQuotes right
   --lift $ putStrLn $ "Variable: " <> show left <> ", value: " <> rightString
   lift $ writeIORef (curEnvironment ^. variables) (Map.insert left rightString curVariables)
   return $ JustReturn 0
 processCommand (CallCommand (ShellCommand commandParts)) = do
   curEnvironment <- ask
   curVariables <- lift $ readIORef $ curEnvironment ^. variables
-  let curScriptsArgs = curEnvironment ^. scriptArguments
-  let command :| commandArguments = makeCommand curVariables curScriptsArgs commandParts
+  command :| commandArguments <- makeCommand commandParts
   case command of
     "read" -> do
       maybeReadedLine <- lift $ safeRunIO getLine Just "Error while reading line" Nothing
@@ -259,7 +296,6 @@ parseAndProcessScript script args =
   case runParser programParser "" script of
     Left parsingError -> putStrLn $ "Error while parsing script: " <> show parsingError
     Right parserResult -> do
-      print parserResult
       emptyVariablesMap <- newIORef Map.empty
       startOutput <- newIORef ""
       let scriptArgsMap = Map.fromList $ zipWithIndex args
