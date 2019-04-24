@@ -44,6 +44,11 @@ variableParser =
     longNumberParser = ScriptArgument <$> (single '{' *> decimal <* single '}')
     shortNumberParser :: Parser Variable
     shortNumberParser = ScriptArgument . read . (: []) <$> digitChar
+    {-
+    a=$(ls) - некорректный встроенный вызов
+    a=$(ls;) - корректный
+    Встроенный вызов обязательно должен заканчиваться стандартным разделителем (ну, я так думаю)
+    -}
     inlineCallParser :: Parser Variable
     inlineCallParser =
       single '(' *> many (try (satisfy isSpace)) *> (InlineCall <$> commandSequenceParser [single ')']) <* single ')'

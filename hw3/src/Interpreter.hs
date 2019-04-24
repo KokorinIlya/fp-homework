@@ -17,7 +17,7 @@ import Parser (programParser)
 import ProgramStructure (Assignment (..), Command (..), DoubleQuotesInner (..), ElseIf (..),
                          Identifier (..), If (..), ImplicitQuotesInner (..), ShellCommand (..),
                          Variable (..), While (..))
-import System.Directory (getCurrentDirectory, doesDirectoryExist)
+import System.Directory (doesDirectoryExist, getCurrentDirectory)
 import System.Exit (ExitCode (..))
 import System.FilePath.Posix ((</>))
 import System.IO (hGetContents)
@@ -45,51 +45,45 @@ data ReturnStatus
   | JustReturn Int
   deriving (Show)
 
+concatWithRemainder :: Monad m => (a -> m String) -> a -> String -> m String
+concatWithRemainder remainderMapper r s = do
+  remainder <- remainderMapper r
+  return $ s <> remainder
+
 processDoubleQuotes :: DoubleQuotesInner -> ReaderT Environment IO String
 processDoubleQuotes DoubleQuotesEnd = return ""
-processDoubleQuotes (DoubleQuotesSimpleString s r) = do
-  remainder <- processDoubleQuotes r
-  return $ s <> remainder
+processDoubleQuotes (DoubleQuotesSimpleString s r) = concatWithRemainder processDoubleQuotes r s
 processDoubleQuotes (DoubleQuotesVariableRef (IdentifiedVariable identifier) r) = do
   curEnvironment <- ask
   curVariableMap <- lift $ readIORef (variables curEnvironment)
   let variableValue = Map.findWithDefault "" identifier curVariableMap
-  remainder <- processDoubleQuotes r
-  return $ variableValue <> remainder
+  concatWithRemainder processDoubleQuotes r variableValue
 processDoubleQuotes (DoubleQuotesVariableRef (ScriptArgument argNumber) r) = do
   curEnvironment <- ask
   let argumentValue = Map.findWithDefault "" argNumber (scriptArguments curEnvironment)
-  remainder <- processDoubleQuotes r
-  return $ argumentValue <> remainder
+  concatWithRemainder processDoubleQuotes r argumentValue
 processDoubleQuotes (DoubleQuotesVariableRef (InlineCall commands) r) = do
   inlineCallResult <- processInlineCall commands
-  remainder <- processDoubleQuotes r
-  return $ inlineCallResult <> remainder
+  concatWithRemainder processDoubleQuotes r inlineCallResult
 
 processImplicitQuotes :: ImplicitQuotesInner -> ReaderT Environment IO String
 processImplicitQuotes ImplicitQuotesEnd = return ""
-processImplicitQuotes (ImplicitQuotesSimpleString s r) = do
-  remainder <- processImplicitQuotes r
-  return $ s <> remainder
+processImplicitQuotes (ImplicitQuotesSimpleString s r) = concatWithRemainder processImplicitQuotes r s
 processImplicitQuotes (ImplicitQuotesVariableRef (IdentifiedVariable identifier) r) = do
   curEnvironment <- ask
   curVariableMap <- lift $ readIORef (variables curEnvironment)
   let variableValue = Map.findWithDefault "" identifier curVariableMap
-  remainder <- processImplicitQuotes r
-  return $ variableValue <> remainder
+  concatWithRemainder processImplicitQuotes r variableValue
 processImplicitQuotes (ImplicitQuotesVariableRef (ScriptArgument argNumber) r) = do
   curEnvironment <- ask
   let argumentValue = Map.findWithDefault "" argNumber (scriptArguments curEnvironment)
-  remainder <- processImplicitQuotes r
-  return $ argumentValue <> remainder
+  concatWithRemainder processImplicitQuotes r argumentValue
 processImplicitQuotes (ImplicitQuotesDoubleQuotes quotes r) = do
   curString <- processDoubleQuotes quotes
-  remainder <- processImplicitQuotes r
-  return $ curString <> remainder
+  concatWithRemainder processImplicitQuotes r curString
 processImplicitQuotes (ImplicitQuotesVariableRef (InlineCall commands) r) = do
   inlineCallResult <- processInlineCall commands
-  remainder <- processImplicitQuotes r
-  return $ inlineCallResult <> remainder
+  concatWithRemainder processImplicitQuotes r inlineCallResult
 
 makeCommand :: NonEmpty ImplicitQuotesInner -> ReaderT Environment IO (NonEmpty String)
 makeCommand (argument :| []) = do
@@ -178,7 +172,6 @@ processCd [arg] = do
     else do
       lift $ putStrLn "Cannot set directory"
       return $ JustReturn 1
-
 processCd args = do
   lift $ putStrLn $ "Wrong number of arguments in cd: " <> show args
   return $ JustReturn 1

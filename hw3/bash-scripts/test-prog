@@ -3,8 +3,11 @@ if true; false; then
 elif true; false; then
     echo false;
 else
+    ls;
+    a=$(   cd hw3; ls;    )
+    echo $a
+    echo $a;
+    ls;
     pwd;
-    a=$(echo huy; cd hw3; pwd;)
-    echo $a$a
-    pwd;
+    echo begin"mid$1$2"text$1$2'end'
 fi
