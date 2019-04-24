@@ -30,7 +30,8 @@ library
                        microlens-th,
                        transformers,
                        directory,
-                       process
+                       process,
+                       filepath
   default-language:    Haskell2010
 
 executable hw3

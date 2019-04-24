@@ -1,5 +1,4 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell     #-}
 {-# LANGUAGE TypeApplications    #-}
 
 module Interpreter
@@ -18,18 +17,20 @@ import Parser (programParser)
 import ProgramStructure (Assignment (..), Command (..), DoubleQuotesInner (..), ElseIf (..),
                          Identifier (..), If (..), ImplicitQuotesInner (..), ShellCommand (..),
                          Variable (..), While (..))
-import System.Directory (getCurrentDirectory, setCurrentDirectory)
+import System.Directory (getCurrentDirectory, doesDirectoryExist)
 import System.Exit (ExitCode (..))
+import System.FilePath.Posix ((</>))
 import System.IO (hGetContents)
 import System.Process (CreateProcess (..), StdStream (..), createProcess, proc, waitForProcess)
 import Text.Megaparsec (runParser)
 import Text.Read (readMaybe)
 
 data Environment = Environment
-  { variables       :: IORef (Map.Map Identifier String)
-  , scriptArguments :: Map.Map Int String
-  , inlineCallDepth :: Int
-  , currentOutput   :: IORef String
+  { variables        :: IORef (Map.Map Identifier String)
+  , scriptArguments  :: Map.Map Int String
+  , inlineCallDepth  :: Int
+  , currentOutput    :: IORef String
+  , currentDirectory :: IORef String
   }
 
 zipWithIndex :: [a] -> [(Int, a)]
@@ -130,19 +131,27 @@ failWithMessage s result _ = do
 failWithReturnCode :: String -> Int -> IOException -> IO ReturnStatus
 failWithReturnCode s n = failWithMessage s (JustReturn n)
 
+processEchoImpl :: (String -> IO ()) -> [String] -> ReaderT Environment IO ReturnStatus
+processEchoImpl printer arguments = do
+  let output = unwords arguments
+  curEnv <- ask
+  if inlineCallDepth curEnv > 0
+    then do
+      let curOutputRef = currentOutput curEnv
+      curOutput <- lift $ readIORef curOutputRef
+      lift $ writeIORef curOutputRef (curOutput <> output)
+      return $ JustReturn 0
+    else lift $ (printer output >> return (JustReturn 0)) `catch` failWithReturnCode "Error writing to console" 1
+
 processEcho :: [String] -> ReaderT Environment IO ReturnStatus
-processEcho ("-n":args) =
-  lift $ (putStr (unwords args) >> return (JustReturn 0)) `catch` failWithReturnCode "Error writing to console" 1
-processEcho args =
-  lift $ (putStrLn (unwords args) >> return (JustReturn 0)) `catch` failWithReturnCode "Error writing to console" 1
+processEcho ("-n":args) = processEchoImpl putStr args
+processEcho args        = processEchoImpl putStrLn args
 
 processPwd :: ReaderT Environment IO ReturnStatus
-processPwd = lift $ (processPwdImpl >> return (JustReturn 0)) `catch` failWithReturnCode "Error in pwd" 1
-  where
-    processPwdImpl :: IO ()
-    processPwdImpl = do
-      currentDirectory <- getCurrentDirectory
-      putStrLn currentDirectory
+processPwd = do
+  curEnv <- ask
+  currentDir <- lift $ readIORef $ currentDirectory curEnv
+  processEcho [currentDir]
 
 processExit :: [String] -> IO ReturnStatus
 processExit [arg] =
@@ -157,7 +166,19 @@ processExit args = do
   return $ JustReturn 1
 
 processCd :: [String] -> ReaderT Environment IO ReturnStatus
-processCd [arg] = lift $ (setCurrentDirectory arg >> return (JustReturn 0)) `catch` failWithReturnCode "Error in cd" 1
+processCd [arg] = do
+  curEnv <- ask
+  currentDir <- lift $ readIORef $ currentDirectory curEnv
+  let newDir = currentDir </> arg
+  directoryExists <- lift $ doesDirectoryExist newDir
+  if directoryExists
+    then do
+      lift $ writeIORef (currentDirectory curEnv) newDir
+      return $ JustReturn 0
+    else do
+      lift $ putStrLn "Cannot set directory"
+      return $ JustReturn 1
+
 processCd args = do
   lift $ putStrLn $ "Wrong number of arguments in cd: " <> show args
   return $ JustReturn 1
@@ -175,7 +196,9 @@ runExternalProcess pName pArgs = do
   where
     runExternalProcessImpl :: String -> [String] -> ReaderT Environment (MaybeT IO) ReturnStatus
     runExternalProcessImpl processName processArgs = do
-      let processInfo = (proc processName processArgs) {cwd = Nothing, std_out = CreatePipe} -- TODO: add Inherit
+      currentEnv <- ask
+      currentDir <- lift $ lift $ readIORef $ currentDirectory currentEnv
+      let processInfo = (proc processName processArgs) {cwd = Just currentDir, std_out = CreatePipe}
       (_, Just stdoutHandle, _, procHandle) <-
         lift $ MaybeT $ safeRunIO (createProcess processInfo) Just "Error while creating process" Nothing
       code <- lift $ MaybeT $ safeRunIO (waitForProcess procHandle) Just "Error while waiting for process" Nothing
@@ -194,7 +217,7 @@ runExternalProcess pName pArgs = do
           let curOutoutRef = currentOutput curEnvironment
           curOutputValue <- lift $ lift $ readIORef curOutoutRef
           lift $ lift $ writeIORef curOutoutRef (curOutputValue <> output)
-        else lift $ MaybeT $ safeRunIO (putStrLn output) Just "Error while writing output" Nothing
+        else lift $ MaybeT $ safeRunIO (putStrLn output) Just "Error while pritning to console" Nothing
 
 processWhile :: Int -> While -> ReaderT Environment IO ReturnStatus
 processWhile n while@While {whileConditions = curWhileConditions, whileActions = curWhileActions} = do
@@ -274,7 +297,10 @@ processInlineCall commands = do
   variablesMap <- lift $ readIORef (variables curEnvironment)
   newMapRef <- lift $ newIORef variablesMap
   newOutputRef <- lift $ newIORef ""
-  let newEnvironment = Environment newMapRef (scriptArguments curEnvironment) (curInlineCallDepth + 1) newOutputRef
+  currentDir <- lift $ readIORef $ currentDirectory curEnvironment
+  currentDirRef <- lift $ newIORef currentDir
+  let newEnvironment =
+        Environment newMapRef (scriptArguments curEnvironment) (curInlineCallDepth + 1) newOutputRef currentDirRef
   _ <- lift $ runReaderT (processScript commands) newEnvironment
   lift $ readIORef newOutputRef
 
@@ -294,8 +320,10 @@ parseAndProcessScript script args =
     Right parserResult -> do
       emptyVariablesMap <- newIORef Map.empty
       startOutput <- newIORef ""
+      currentDir <- getCurrentDirectory
+      currentDirRef <- newIORef currentDir
       let scriptArgsMap = Map.fromList $ zipWithIndex args
-      let startCtx = Environment emptyVariablesMap scriptArgsMap 0 startOutput
+      let startCtx = Environment emptyVariablesMap scriptArgsMap 0 startOutput currentDirRef
       returnStatus <- runReaderT (processScript parserResult) startCtx
       let exitCode =
             case returnStatus of

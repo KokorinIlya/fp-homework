@@ -3,11 +3,8 @@ if true; false; then
 elif true; false; then
     echo false;
 else
-    echo else;
-    a=$(ls;)
-    echo $a
-    echo
-    echo $a
-    echo
-    echo $a
+    pwd;
+    a=$(echo huy; cd hw3; pwd;)
+    echo $a$a
+    pwd;
 fi
