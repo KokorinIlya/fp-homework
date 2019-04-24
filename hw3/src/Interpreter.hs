@@ -14,8 +14,6 @@ import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
 import Data.IORef (IORef, newIORef, readIORef, writeIORef)
 import Data.List.NonEmpty (NonEmpty (..), toList)
 import qualified Data.Map.Strict as Map
-import Lens.Micro ((^.))
-import Lens.Micro.TH (makeLenses)
 import Parser (programParser)
 import ProgramStructure (Assignment (..), Command (..), DoubleQuotesInner (..), ElseIf (..),
                          Identifier (..), If (..), ImplicitQuotesInner (..), ShellCommand (..),
@@ -28,13 +26,11 @@ import Text.Megaparsec (runParser)
 import Text.Read (readMaybe)
 
 data Environment = Environment
-  { _variables       :: IORef (Map.Map Identifier String)
-  , _scriptArguments :: Map.Map Int String
-  , _inlineCallDepth :: Int
-  , _currentOutput   :: IORef String
+  { variables       :: IORef (Map.Map Identifier String)
+  , scriptArguments :: Map.Map Int String
+  , inlineCallDepth :: Int
+  , currentOutput   :: IORef String
   }
-
-makeLenses ''Environment
 
 zipWithIndex :: [a] -> [(Int, a)]
 zipWithIndex = zipWithIndexImpl 0
@@ -55,13 +51,13 @@ processDoubleQuotes (DoubleQuotesSimpleString s r) = do
   return $ s <> remainder
 processDoubleQuotes (DoubleQuotesVariableRef (IdentifiedVariable identifier) r) = do
   curEnvironment <- ask
-  curVariableMap <- lift $ readIORef (curEnvironment ^. variables)
+  curVariableMap <- lift $ readIORef (variables curEnvironment)
   let variableValue = Map.findWithDefault "" identifier curVariableMap
   remainder <- processDoubleQuotes r
   return $ variableValue <> remainder
 processDoubleQuotes (DoubleQuotesVariableRef (ScriptArgument argNumber) r) = do
   curEnvironment <- ask
-  let argumentValue = Map.findWithDefault "" argNumber (curEnvironment ^. scriptArguments)
+  let argumentValue = Map.findWithDefault "" argNumber (scriptArguments curEnvironment)
   remainder <- processDoubleQuotes r
   return $ argumentValue <> remainder
 processDoubleQuotes (DoubleQuotesVariableRef (InlineCall commands) r) = do
@@ -76,13 +72,13 @@ processImplicitQuotes (ImplicitQuotesSimpleString s r) = do
   return $ s <> remainder
 processImplicitQuotes (ImplicitQuotesVariableRef (IdentifiedVariable identifier) r) = do
   curEnvironment <- ask
-  curVariableMap <- lift $ readIORef (curEnvironment ^. variables)
+  curVariableMap <- lift $ readIORef (variables curEnvironment)
   let variableValue = Map.findWithDefault "" identifier curVariableMap
   remainder <- processImplicitQuotes r
   return $ variableValue <> remainder
 processImplicitQuotes (ImplicitQuotesVariableRef (ScriptArgument argNumber) r) = do
   curEnvironment <- ask
-  let argumentValue = Map.findWithDefault "" argNumber (curEnvironment ^. scriptArguments)
+  let argumentValue = Map.findWithDefault "" argNumber (scriptArguments curEnvironment)
   remainder <- processImplicitQuotes r
   return $ argumentValue <> remainder
 processImplicitQuotes (ImplicitQuotesDoubleQuotes quotes r) = do
@@ -193,9 +189,9 @@ runExternalProcess pName pArgs = do
     processOutput :: String -> ReaderT Environment (MaybeT IO) ()
     processOutput output = do
       curEnvironment <- ask
-      if curEnvironment ^. inlineCallDepth > 0
+      if inlineCallDepth curEnvironment > 0
         then do
-          let curOutoutRef = curEnvironment ^. currentOutput
+          let curOutoutRef = currentOutput curEnvironment
           curOutputValue <- lift $ lift $ readIORef curOutoutRef
           lift $ lift $ writeIORef curOutoutRef (curOutputValue <> output)
         else lift $ MaybeT $ safeRunIO (putStrLn output) Just "Error while writing output" Nothing
@@ -246,21 +242,21 @@ processIf If { ifConditions = curIfConditions
 processCommand :: Command -> ReaderT Environment IO ReturnStatus
 processCommand (AssignmentCommand (Assignment left right)) = do
   curEnvironment <- ask
-  curVariables <- lift $ readIORef $ curEnvironment ^. variables
+  curVariables <- lift $ readIORef $ variables curEnvironment
   rightString <- processImplicitQuotes right
   --lift $ putStrLn $ "Variable: " <> show left <> ", value: " <> rightString
-  lift $ writeIORef (curEnvironment ^. variables) (Map.insert left rightString curVariables)
+  lift $ writeIORef (variables curEnvironment) (Map.insert left rightString curVariables)
   return $ JustReturn 0
 processCommand (CallCommand (ShellCommand commandParts)) = do
   curEnvironment <- ask
-  curVariables <- lift $ readIORef $ curEnvironment ^. variables
+  curVariables <- lift $ readIORef $ variables curEnvironment
   command :| commandArguments <- makeCommand commandParts
   case command of
     "read" -> do
       maybeReadedLine <- lift $ safeRunIO getLine Just "Error while reading line" Nothing
       case maybeReadedLine of
         Just readedLine -> do
-          lift $ writeIORef (curEnvironment ^. variables) (processRead commandArguments readedLine curVariables)
+          lift $ writeIORef (variables curEnvironment) (processRead commandArguments readedLine curVariables)
           return $ JustReturn 0
         Nothing -> return $ JustReturn 1
     "echo" -> processEcho commandArguments
@@ -274,11 +270,11 @@ processCommand (IfCommand ifCommand) = processIf ifCommand
 processInlineCall :: [Command] -> ReaderT Environment IO String
 processInlineCall commands = do
   curEnvironment <- ask
-  let curInlineCallDepth = curEnvironment ^. inlineCallDepth
-  variablesMap <- lift $ readIORef (curEnvironment ^. variables)
+  let curInlineCallDepth = inlineCallDepth curEnvironment
+  variablesMap <- lift $ readIORef (variables curEnvironment)
   newMapRef <- lift $ newIORef variablesMap
   newOutputRef <- lift $ newIORef ""
-  let newEnvironment = Environment newMapRef (curEnvironment ^. scriptArguments) (curInlineCallDepth + 1) newOutputRef
+  let newEnvironment = Environment newMapRef (scriptArguments curEnvironment) (curInlineCallDepth + 1) newOutputRef
   _ <- lift $ runReaderT (processScript commands) newEnvironment
   lift $ readIORef newOutputRef
 
