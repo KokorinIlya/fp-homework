@@ -10,15 +10,16 @@ import Control.Exception (IOException, catch)
 import Control.Monad.Reader (ReaderT, ask, runReaderT)
 import Control.Monad.State (State, execState, get, put)
 import Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
 import Data.IORef (IORef, newIORef, readIORef, writeIORef)
-import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty (NonEmpty (..), toList)
 import qualified Data.Map.Strict as Map
 import Lens.Micro ((^.))
 import Lens.Micro.TH (makeLenses)
 import Parser (programParser)
 import ProgramStructure (Assignment (..), Command (..), DoubleQuotesInner (..), ElseIf (..),
                          Identifier (..), If (..), ImplicitQuotesInner (..), ShellCommand (..),
-                         SingleQuotes (..), Variable (..), While (..))
+                         Variable (..), While (..))
 import System.Directory (getCurrentDirectory, setCurrentDirectory)
 import System.Exit (ExitCode (..))
 import System.IO (hGetContents)
@@ -133,18 +134,73 @@ processCd args = do
   lift $ putStrLn $ "Wrong number of arguments in cd: " <> show args
   return $ JustReturn 1
 
+safeRunIO :: IO a -> (a -> b) -> String -> b -> IO b
+safeRunIO action f msg def = (f <$> action) `catch` failWithMessage msg def
+
 runExternalProcess :: String -> [String] -> ReaderT Environment IO ReturnStatus
-runExternalProcess processName processArgs = do
-  let processInfo = (proc processName processArgs) {cwd = Nothing, std_out = CreatePipe} -- TODO: add Inherit
-  (_, Just stdoutHandle, _, procHandle) <- lift $ createProcess processInfo
-  code <- lift $ waitForProcess procHandle
-  let returnStatus =
-        case code of
-          ExitSuccess   -> JustReturn 0
-          ExitFailure c -> JustReturn c
-  output <- lift $ hGetContents stdoutHandle
-  lift $ putStrLn output
-  return returnStatus
+runExternalProcess pName pArgs = do
+  curEnv <- ask
+  maybeReturnStatus <- lift $ runMaybeT $ runReaderT (runExternalProcessImpl pName pArgs) curEnv
+  case maybeReturnStatus of
+    Nothing           -> return $ JustReturn 1
+    Just returnStatus -> return returnStatus
+  where
+    runExternalProcessImpl :: String -> [String] -> ReaderT Environment (MaybeT IO) ReturnStatus
+    runExternalProcessImpl processName processArgs = do
+      let processInfo = (proc processName processArgs) {cwd = Nothing, std_out = CreatePipe} -- TODO: add Inherit
+      (_, Just stdoutHandle, _, procHandle) <-
+        lift $ MaybeT $ safeRunIO (createProcess processInfo) Just "Error while creating process" Nothing
+      code <- lift $ MaybeT $ safeRunIO (waitForProcess procHandle) Just "Error while waiting for process" Nothing
+      let returnStatus =
+            case code of
+              ExitSuccess   -> JustReturn 0
+              ExitFailure c -> JustReturn c
+      output <- lift $ MaybeT $ safeRunIO (hGetContents stdoutHandle) Just "Error while getting process output" Nothing
+      lift $ MaybeT $ safeRunIO (putStrLn output) Just "Error while printing process output" Nothing
+      return returnStatus
+
+processWhile :: Int -> While -> ReaderT Environment IO ReturnStatus
+processWhile n while@While {whileConditions = curWhileConditions, whileActions = curWhileActions} = do
+  conditionsReturnStatus <- processScript $ toList curWhileConditions
+  case conditionsReturnStatus of
+    exitCode@(ExitCode _) -> return exitCode
+    JustReturn code
+      | code == 0 -> do
+        commandsReturnStatus <- processScript curWhileActions
+        case commandsReturnStatus of
+          exitCode@(ExitCode _) -> return exitCode
+          JustReturn returnCode -> processWhile returnCode while
+      | otherwise -> return $ JustReturn n
+
+processIf :: If -> ReaderT Environment IO ReturnStatus
+processIf If { ifConditions = curIfConditions
+             , ifActions = curActions
+             , elseIfs = curElseIfs
+             , maybeElse = maybeElseActions
+             } = do
+  conditionsReturnStatus <- processScript $ toList curIfConditions
+  case conditionsReturnStatus of
+    exitCode@(ExitCode _) -> return exitCode
+    JustReturn code
+      | code == 0 -> processScript curActions
+      | otherwise -> do
+        maybeElseIfResult <- processElseIfs curElseIfs
+        case maybeElseIfResult of
+          Nothing ->
+            case maybeElseActions of
+              Nothing          -> return $ JustReturn 0
+              Just elseActions -> processScript elseActions
+          Just elseIfResult -> return elseIfResult
+  where
+    processElseIfs :: [ElseIf] -> ReaderT Environment IO (Maybe ReturnStatus)
+    processElseIfs [] = return Nothing
+    processElseIfs (ElseIf {elseIfConditions = curElseIfConditions, elseIfActions = curElseIfActions}:others) = do
+      conditionsReturnStatus <- processScript $ toList curElseIfConditions
+      case conditionsReturnStatus of
+        exitCode@(ExitCode _) -> return $ Just exitCode
+        JustReturn code
+          | code == 0 -> Just <$> processScript curElseIfActions
+          | otherwise -> processElseIfs others
 
 processCommand :: Command -> ReaderT Environment IO ReturnStatus
 processCommand (AssignmentCommand (Assignment left right)) = do
@@ -162,7 +218,7 @@ processCommand (CallCommand (ShellCommand commandParts)) = do
   let command :| commandArguments = makeCommand curVariables curScriptsArgs commandParts
   case command of
     "read" -> do
-      maybeReadedLine <- lift $ (Just <$> getLine) `catch` failWithMessage "Error while reading line" Nothing
+      maybeReadedLine <- lift $ safeRunIO getLine Just "Error while reading line" Nothing
       case maybeReadedLine of
         Just readedLine -> do
           lift $ writeIORef (curEnvironment ^. variables) (processRead commandArguments readedLine curVariables)
@@ -173,12 +229,8 @@ processCommand (CallCommand (ShellCommand commandParts)) = do
     "exit" -> lift $ processExit commandArguments
     "cd" -> processCd commandArguments
     _ -> runExternalProcess command commandArguments
-  {-lift $ putStrLn $ f x
-  return $ JustReturn 0
-  where
-    f :: NonEmpty String -> String
-    f (s :| [])       = s
-    f (s :| (ss:sss)) = s <> "\n" <> f (ss :| sss)-}
+processCommand (WhileCommand while) = processWhile 0 while
+processCommand (IfCommand ifCommand) = processIf ifCommand
 
 processScript :: [Command] -> ReaderT Environment IO ReturnStatus
 processScript [] = return $ ExitCode 0

@@ -1,12 +1,9 @@
-a=a_string
-b=b_string"qts$1"$2$a
-c=a
-read a b $c
-echo "a and b are: "$a", "$b
-ex=ex
-it=it
-$ex$it 228 282
-pwd
-cd hw3
-pwd
-ls -l
+if true; false; then
+    echo true;
+elif true; false; then
+    echo false;
+else
+    echo else;
+    a=abacaba
+    echo $a
+fi
