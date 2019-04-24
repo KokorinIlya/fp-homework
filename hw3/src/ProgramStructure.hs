@@ -21,6 +21,7 @@ newtype Identifier =
 data Variable
   = IdentifiedVariable Identifier
   | ScriptArgument Int
+  | InlineCall [Command]
   deriving (Show)
 
 newtype SingleQuotes =

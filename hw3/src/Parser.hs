@@ -36,12 +36,17 @@ identifierParser = Identifier <$> ((:|) <$> oneOf ('_' : ['a' .. 'z'] ++ ['A' ..
     identifierEndParser = many $ try (oneOf ('_' : ['a' .. 'z'] ++ ['A' .. 'Z'] ++ ['0' .. '9']))
 
 variableParser :: Parser Variable
-variableParser = try shortNumberParser <|> try longNumberParser <|> try (IdentifiedVariable <$> identifierParser)
+variableParser =
+  try shortNumberParser <|> try longNumberParser <|> try (IdentifiedVariable <$> identifierParser) <|>
+  try inlineCallParser
   where
     longNumberParser :: Parser Variable
     longNumberParser = ScriptArgument <$> (single '{' *> decimal <* single '}')
     shortNumberParser :: Parser Variable
     shortNumberParser = ScriptArgument . read . (: []) <$> digitChar
+    inlineCallParser :: Parser Variable
+    inlineCallParser =
+      single '(' *> many (try (satisfy isSpace)) *> (InlineCall <$> commandSequenceParser [single ')']) <* single ')'
 
 singleQuotesParser :: Parser SingleQuotes
 singleQuotesParser = single '\'' *> (SingleQuotes <$> singleQuotesInnerParser) <* single '\''

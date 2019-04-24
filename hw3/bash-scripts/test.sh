@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
-exit 1
-pwd
+a=$(echo huy; echo elda; exit 0; echo pizda)
+echo $a

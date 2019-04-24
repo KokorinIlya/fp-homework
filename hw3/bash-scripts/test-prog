@@ -1,9 +1,11 @@
-if true; false; then
-    echo true;
-elif true; false; then
-    echo false;
-else
-    echo else;
-    a=abacaba
-    echo $a
-fi
+a=$(b=zapula; echo b;
+    if ls; then
+        echo ls
+    else
+        echo 'not_ls'
+    fi     ;
+
+    echo $b
+
+
+)

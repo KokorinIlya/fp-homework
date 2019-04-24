@@ -30,6 +30,8 @@ import Text.Read (readMaybe)
 data Environment = Environment
   { _variables       :: IORef (Map.Map Identifier String)
   , _scriptArguments :: Map.Map Int String
+  , _inlineCallDepth :: IORef Int
+  , _currentOutput    :: IORef String
   }
 
 makeLenses ''Environment
@@ -232,6 +234,18 @@ processCommand (CallCommand (ShellCommand commandParts)) = do
 processCommand (WhileCommand while) = processWhile 0 while
 processCommand (IfCommand ifCommand) = processIf ifCommand
 
+processInlineCall :: [Command] -> ReaderT Environment IO String
+processInlineCall commands = do
+  curEnvironment <- ask
+  let inlineCallDepthRef = curEnvironment ^. inlineCallDepth
+  curInlineCallDepthRef <- lift $ readIORef inlineCallDepthRef
+  lift $ writeIORef inlineCallDepthRef (curInlineCallDepthRef + 1)
+  _ <- processScript commands
+  let curOutputRef = curEnvironment ^. currentOutput
+  collectedOutput <- lift $ readIORef curOutputRef
+  lift $ writeIORef curOutputRef ""
+  return collectedOutput
+
 processScript :: [Command] -> ReaderT Environment IO ReturnStatus
 processScript [] = return $ ExitCode 0
 processScript [curCommand] = processCommand curCommand
@@ -246,9 +260,12 @@ parseAndProcessScript script args =
   case runParser programParser "" script of
     Left parsingError -> putStrLn $ "Error while parsing script: " <> show parsingError
     Right parserResult -> do
+      print parserResult
       emptyVariablesMap <- newIORef Map.empty
+      startInlineCallDepth <- newIORef 0
+      startOutput <- newIORef ""
       let scriptArgsMap = Map.fromList $ zipWithIndex args
-      let startCtx = Environment emptyVariablesMap scriptArgsMap
+      let startCtx = Environment emptyVariablesMap scriptArgsMap startInlineCallDepth startOutput
       returnStatus <- runReaderT (processScript parserResult) startCtx
       let exitCode =
             case returnStatus of
