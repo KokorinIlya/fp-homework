@@ -30,8 +30,8 @@ import Text.Read (readMaybe)
 data Environment = Environment
   { _variables       :: IORef (Map.Map Identifier String)
   , _scriptArguments :: Map.Map Int String
-  , _inlineCallDepth :: IORef Int
-  , _currentOutput    :: IORef String
+  , _inlineCallDepth :: Int
+  , _currentOutput   :: IORef String
   }
 
 makeLenses ''Environment
@@ -237,14 +237,13 @@ processCommand (IfCommand ifCommand) = processIf ifCommand
 processInlineCall :: [Command] -> ReaderT Environment IO String
 processInlineCall commands = do
   curEnvironment <- ask
-  let inlineCallDepthRef = curEnvironment ^. inlineCallDepth
-  curInlineCallDepthRef <- lift $ readIORef inlineCallDepthRef
-  lift $ writeIORef inlineCallDepthRef (curInlineCallDepthRef + 1)
-  _ <- processScript commands
-  let curOutputRef = curEnvironment ^. currentOutput
-  collectedOutput <- lift $ readIORef curOutputRef
-  lift $ writeIORef curOutputRef ""
-  return collectedOutput
+  let curInlineCallDepth = curEnvironment ^. inlineCallDepth
+  variablesMap <- lift $ readIORef (curEnvironment ^. variables)
+  newMapRef <- lift $ newIORef variablesMap
+  newOutputRef <- lift $ newIORef ""
+  let newEnvironment = Environment newMapRef (curEnvironment ^. scriptArguments) (curInlineCallDepth + 1) newOutputRef
+  _ <- lift $ runReaderT (processScript commands) newEnvironment
+  lift $ readIORef newOutputRef
 
 processScript :: [Command] -> ReaderT Environment IO ReturnStatus
 processScript [] = return $ ExitCode 0
@@ -262,10 +261,9 @@ parseAndProcessScript script args =
     Right parserResult -> do
       print parserResult
       emptyVariablesMap <- newIORef Map.empty
-      startInlineCallDepth <- newIORef 0
       startOutput <- newIORef ""
       let scriptArgsMap = Map.fromList $ zipWithIndex args
-      let startCtx = Environment emptyVariablesMap scriptArgsMap startInlineCallDepth startOutput
+      let startCtx = Environment emptyVariablesMap scriptArgsMap 0 startOutput
       returnStatus <- runReaderT (processScript parserResult) startCtx
       let exitCode =
             case returnStatus of
