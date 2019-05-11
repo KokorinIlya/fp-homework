@@ -1,13 +1,4 @@
-if true; false; then
-    echo true;
-elif true; false; then
-    echo false;
-else
-    ls;
-    a=$(   cd hw3; ls;    )
-    echo $a
-    echo $a;
-    ls;
-    pwd;
-    echo begin"mid$1$2"text$1$2'end'
-fi
+a=ec
+b=ho
+c=' -n huy'
+$a$b$c

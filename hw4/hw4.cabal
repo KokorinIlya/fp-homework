@@ -1,0 +1,62 @@
+name:                hw4
+version:             0.1.0.0
+synopsis:            Synopsis for task 4
+description:         Task 4 for FP ITMO course
+
+homepage:            https://github.com//fp-homework/tree/master/hw4#readme
+license:             MIT
+license-file:        LICENSE
+author:              Author name here
+maintainer:          example@example.com
+copyright:           2019 Author name here
+
+category:            Web
+build-type:          Simple
+extra-source-files:  README.md
+cabal-version:       >=1.10
+tested-with:         GHC == 8.0.1
+
+library
+  hs-source-dirs:      src
+  exposed-modules:     Lib,
+                       Task1,
+                       Task2
+  ghc-options:         -Wall
+  build-depends:       base >= 4.9 && < 5,
+                       vector,
+                       parallel,
+                       deepseq,
+                       stm
+  default-language:    Haskell2010
+
+executable hw4
+  hs-source-dirs:      app
+  main-is:             Main.hs
+  ghc-options:         -Wall -Werror -threaded -rtsopts -with-rtsopts=-N4
+  build-depends:       base
+                     , hw4
+  default-language:    Haskell2010
+
+test-suite hw4-test
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test
+  main-is:             Spec.hs
+  build-depends:       base
+                     , hw4
+  ghc-options:         -Wall -Werror -threaded -rtsopts -with-rtsopts=-N4
+  default-language:    Haskell2010
+
+benchmark hw4-bench
+  type:               exitcode-stdio-1.0
+  main-is:            Main.hs
+  other-modules:      Task1Bench,
+                      Task2Bench
+  hs-source-dirs:     bench
+  ghc-options:        -Wall -threaded -rtsopts -with-rtsopts=-N4
+  build-depends:      base >=4.7 && <5
+                      , hw4
+                      , hspec
+                      , criterion
+                      , loop
+                      , weigh
+  default-language:   Haskell2010
