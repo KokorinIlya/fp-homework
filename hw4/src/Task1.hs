@@ -5,15 +5,58 @@ module Task1
   , multiplyV2
   , multiplyV3
   , multiplyV4
+  , multiply
+  , multiplyNaive
   ) where
 
 import Control.Monad (forM_, join)
 import Control.Monad.ST (ST)
 import Control.Parallel.Strategies (Eval, rpar, runEval)
 import Data.STRef (STRef, modifySTRef', newSTRef, readSTRef, writeSTRef)
-import qualified Data.Vector as V
-import qualified Data.Vector.Mutable as MV
+import qualified Data.Vector.Unboxed as V
+import qualified Data.Vector.Unboxed.Mutable as MV
 import Task2 (parallelReduce)
+
+import Control.Parallel.Strategies (parListChunk, parMap, rdeepseq)
+import Data.Array.Unboxed (UArray, bounds, listArray, (!))
+import qualified Data.List as DL
+
+type Multiplier = UArray (Int, Int) Int -> UArray (Int, Int) Int -> [[Int]]
+
+listToArrayMatrix :: [[Int]] -> UArray (Int, Int) Int
+listToArrayMatrix mat = do
+  let n = length mat
+  let m = length $ head mat
+  listArray ((0, 0), (n - 1, m - 1)) $ concat mat
+
+mulArrayMatrixSeq :: Multiplier
+mulArrayMatrixSeq ma mb = [[sum [(ma ! (i, t)) * (mb ! (t, j)) | t <- [0 .. m]] | j <- [0 .. k]] | i <- [0 .. n]]
+  where
+    n = fst $ snd $ bounds ma
+    m = snd $ snd $ bounds ma
+    k = snd $ snd $ bounds mb
+
+mulArrayMatrixPar :: Multiplier
+mulArrayMatrixPar ma mb = parMap (parListChunk 10000 rdeepseq) countRow [[(i, j) | j <- [0 .. k]] | i <- [0 .. n]]
+  where
+    n = fst $ snd $ bounds ma
+    m = snd $ snd $ bounds ma
+    k = snd $ snd $ bounds mb
+    countProd !i !j !t = (ma ! (i, t)) * (mb ! (t, j))
+    countCell (!i, !j) = DL.foldl' (+) 0 $ map (countProd i j) [0 .. m]
+    countRow = map countCell
+
+multiplyCore :: Multiplier -> [[Int]] -> [[Int]] -> Maybe [[Int]]
+multiplyCore inner ma mb =
+  if length (head ma) /= length mb
+    then Nothing
+    else Just $ inner (listToArrayMatrix ma) (listToArrayMatrix mb)
+
+multiplyNaive :: [[Int]] -> [[Int]] -> Maybe [[Int]]
+multiplyNaive = multiplyCore mulArrayMatrixSeq
+
+multiply :: [[Int]] -> [[Int]] -> Maybe [[Int]]
+multiply = multiplyCore mulArrayMatrixPar
 
 {-
 Вторая матрица не транспонируется
