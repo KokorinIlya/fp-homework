@@ -1,6 +1,10 @@
 module Main where
 
-import Task1Bench (evalBench)
+import Task1Bench (matrixBench)
+import Task2Bench (doubleAreaBench, perimeterBench)
 
 main :: IO ()
-main = evalBench
+main = do
+  matrixBench
+  doubleAreaBench
+  perimeterBench

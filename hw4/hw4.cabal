@@ -20,6 +20,7 @@ library
   hs-source-dirs:      src
   exposed-modules:     Task1,
                        Task2,
+                       Task3,
                        Task4
   ghc-options:         -Wall
   build-depends:       base >= 4.9 && < 5,
@@ -27,25 +28,30 @@ library
                        parallel,
                        deepseq,
                        stm,
-                       array
+                       array,
+                       loop
   default-language:    Haskell2010
 
 executable hw4
   hs-source-dirs:      app
   main-is:             Main.hs
   ghc-options:         -Wall -Werror -threaded -rtsopts -with-rtsopts=-N4
-  build-depends:       base
-                     , hw4
+  build-depends:       base,
+                       hw4
   default-language:    Haskell2010
 
-test-suite hw4-test
-  type:                exitcode-stdio-1.0
-  hs-source-dirs:      test
-  main-is:             Spec.hs
-  build-depends:       base
-                     , hw4
-  ghc-options:         -Wall -Werror -threaded -rtsopts -with-rtsopts=-N4
-  default-language:    Haskell2010
+test-suite doctests
+  type:             exitcode-stdio-1.0
+  main-is:          Spec.hs
+  build-depends:    base,
+                    hspec,
+                    QuickCheck >= 2.12 && < 2.13,
+                    hw4
+  other-modules:    Task2Spec,
+                    Task3Spec
+  ghc-options:      -Wall -Werror -threaded -rtsopts -with-rtsopts=-N4
+  hs-source-dirs:   test
+  default-language: Haskell2010
 
 benchmark hw4-bench
   type:               exitcode-stdio-1.0
@@ -54,10 +60,10 @@ benchmark hw4-bench
                       Task2Bench
   hs-source-dirs:     bench
   ghc-options:        -Wall -threaded -rtsopts -with-rtsopts=-N4
-  build-depends:      base >=4.7 && <5
-                      , hw4
-                      , hspec
-                      , criterion
-                      , loop
-                      , weigh
+  build-depends:      base >=4.7 && <5,
+                      hw4,
+                      hspec,
+                      criterion,
+                      loop,
+                      weigh
   default-language:   Haskell2010

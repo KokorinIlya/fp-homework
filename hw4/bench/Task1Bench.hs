@@ -1,30 +1,25 @@
 module Task1Bench
-  ( evalBench
+  ( matrixBench
   ) where
 
-import Task1 (multiply, multiplyNaive, multiplyV1, multiplyV2, multiplyV3, multiplyV4)
+import Task1 (multiplyV1, multiplyV2, multiplyV3)
 
 import Criterion.Main (bench, bgroup, defaultMain, nf)
 
 matrixGenerate :: Int -> Int -> Int -> [[Int]]
 matrixGenerate a b c = replicate a $ replicate b c
 
-evalBench :: IO ()
-evalBench =
+matrixBench :: IO ()
+matrixBench =
   defaultMain
     [ bgroup "matrix mul" matrixMultV1
-    , bgroup "matrix mul" matrixMultV2
-    , bgroup "matrix mul" matrixMultV3
-    --, bgroup "matrix mul" matrixMultV4
-    --, bgroup "matrix mul" matrixMultLev
-    --, bgroup "matrix mul" matrixMultLevSlow
+   --, bgroup "matrix mul" matrixMultV2,
+   --, bgroup "matrix mul" matrixMultV3
+   --, bgroup "matrix mul" matrixMult
     ]
   where
-    matrixs = map (\x -> (x, matrixGenerate x x 5, matrixGenerate x x 5)) [2000]
+    matrixs = map (\x -> (x, matrixGenerate x x 5, matrixGenerate x x 5)) [100, 300, 500]
     matrixMultV1 = map (\(a, l, r) -> bench ("transpose, parallel " <> show a) $ nf (multiplyV1 l) r) matrixs
     matrixMultV2 = map (\(a, l, r) -> bench ("no-transpose, parallel " <> show a) $ nf (multiplyV2 l) r) matrixs
     matrixMultV3 = map (\(a, l, r) -> bench ("no-transpose, no-parallel " <> show a) $ nf (multiplyV3 l) r) matrixs
-    matrixMultV4 =
-      map (\(a, l, r) -> bench ("no-transpose, accurate parallel " <> show a) $ nf (multiplyV4 l) r) matrixs
-    matrixMultLev = map (\(a, l, r) -> bench ("Lev fast " <> show a) $ nf (multiply l) r) matrixs
-    matrixMultLevSlow = map (\(a, l, r) -> bench ("Lev slow " <> show a) $ nf (multiply l) r) matrixs
+    --matrixMult = map (\(a, l, r) -> bench ("other " <> show a) $ nf (multiply l) r) matrixs
