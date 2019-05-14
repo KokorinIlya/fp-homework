@@ -21,7 +21,8 @@ library
   exposed-modules:     Task1,
                        Task2,
                        Task3,
-                       Task4
+                       Task4,
+                       Task5
   ghc-options:         -Wall
   build-depends:       base >= 4.9 && < 5,
                        vector,
@@ -29,7 +30,11 @@ library
                        deepseq,
                        stm,
                        array,
-                       loop
+                       mtl,
+                       stm-containers,
+                       hashable,
+                       exceptions,
+                       list-t
   default-language:    Haskell2010
 
 executable hw4
@@ -37,7 +42,8 @@ executable hw4
   main-is:             Main.hs
   ghc-options:         -Wall -Werror -threaded -rtsopts -with-rtsopts=-N4
   build-depends:       base,
-                       hw4
+                       hw4,
+                       mtl
   default-language:    Haskell2010
 
 test-suite doctests
