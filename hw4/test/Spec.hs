@@ -4,6 +4,7 @@ module Main
 
 import Task2Spec (doubleAreaSlowSpec, doubleAreaSpec, perimeterSlowSpec, perimeterSpec)
 import Task3Spec (gaussSpec)
+import Task4Spec (hashTableSpec)
 import Test.Hspec (hspec)
 
 main :: IO ()
@@ -14,3 +15,4 @@ main =
     perimeterSpec
     perimeterSlowSpec
     gaussSpec
+    hashTableSpec

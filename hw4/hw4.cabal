@@ -54,7 +54,8 @@ test-suite doctests
                     QuickCheck >= 2.12 && < 2.13,
                     hw4
   other-modules:    Task2Spec,
-                    Task3Spec
+                    Task3Spec,
+                    Task4Spec
   ghc-options:      -Wall -Werror -threaded -rtsopts -with-rtsopts=-N4
   hs-source-dirs:   test
   default-language: Haskell2010
@@ -68,8 +69,5 @@ benchmark hw4-bench
   ghc-options:        -Wall -threaded -rtsopts -with-rtsopts=-N4
   build-depends:      base >=4.7 && <5,
                       hw4,
-                      hspec,
-                      criterion,
-                      loop,
-                      weigh
+                      criterion
   default-language:   Haskell2010
