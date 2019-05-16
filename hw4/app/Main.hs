@@ -2,12 +2,12 @@
 
 module Main where
 
-import Control.Concurrent (MVar, forkIO, newEmptyMVar, putMVar, readMVar)
+import Control.Concurrent (MVar, forkIO, newEmptyMVar, putMVar, readMVar, threadDelay)
 import Control.Exception (Exception, throwIO)
 import Control.Monad (forM_, when)
 import Control.Monad.Trans (lift)
 import Task4 (ConcurrentHashTable, newCHT, putCHT, sizeCHT)
-import Task5 (allocate, release, resourceFork, runAllocateT, tryAll)
+import Task5 (AllocateT, allocate, release, resourceFork, runAllocateT, tryAll)
 
 data Dummy =
   Dummy
@@ -32,6 +32,12 @@ main = do
   _ <- tryAll test7
   putStrLn "___"
   test8
+  putStrLn "___"
+  test9
+  putStrLn "___"
+  test10
+  putStrLn "___"
+  test11
   putStrLn "___"
 
 test1 :: IO ()
@@ -136,12 +142,89 @@ test7 =
     lift $ putStrLn "After d"
     lift $ putStrLn "finishing"
 
+myFork :: IO () -> IO ()
+myFork action = () <$ forkIO action
+
 test8 :: IO ()
 test8 =
   runAllocateT $ do
     (_, _) <- allocate (putStrLn "A aquired") (\_ -> putStrLn "A released")
     lift $ putStrLn "After a"
     resourceFork
-      (\action -> () <$ forkIO action)
+      myFork
       (allocate (putStrLn "C aquired") (\_ -> putStrLn "C released") >> lift (putStrLn "Finished helper thread"))
     lift $ putStrLn "finishing"
+
+test9 :: IO ()
+test9 =
+  runAllocateT $ do
+    (_, _) <- allocate (putStrLn "A aquired") (\_ -> putStrLn "A released")
+    lift $ putStrLn "After a"
+    (_, bKey) <- allocate (putStrLn "B aquired") (\_ -> putStrLn "B released")
+    lift $ putStrLn "After b"
+    (_, cKey) <- allocate (putStrLn "C aquired") (\_ -> putStrLn "C released")
+    lift $ putStrLn "After c"
+    release bKey
+    resourceFork myFork forkFunction
+    release cKey
+    lift $ putStrLn "finished"
+  where
+    forkFunction :: AllocateT IO ()
+    forkFunction = do
+      (_, _) <- allocate (putStrLn "D aquired") (\_ -> putStrLn "D released")
+      lift $ putStrLn "After d"
+      resourceFork
+        myFork
+        (allocate (putStrLn "E aquired") (\_ -> putStrLn "E released") >> lift (putStrLn "Finished last thread"))
+      lift $ putStrLn "Finished helper thread"
+
+test10 :: IO ()
+test10 =
+  runAllocateT $ do
+    (_, _) <- allocate (putStrLn "A aquired") (\_ -> putStrLn "A released")
+    lift $ putStrLn "After a"
+    (_, bKey) <- allocate (putStrLn "B aquired") (\_ -> putStrLn "B released")
+    lift $ putStrLn "After b"
+    (_, cKey) <- allocate (putStrLn "C aquired") (\_ -> putStrLn "C released")
+    lift $ putStrLn "After c"
+    release bKey
+    resourceFork myFork forkFunction
+    release cKey
+    release cKey
+    lift $ putStrLn "finished"
+  where
+    forkFunction :: AllocateT IO ()
+    forkFunction = do
+      (_, dKey) <- allocate (putStrLn "D aquired") (\_ -> putStrLn "D released")
+      lift $ putStrLn "After d"
+      resourceFork
+        myFork
+        (allocate (putStrLn "E aquired") (\_ -> putStrLn "E released") >> lift (putStrLn "Finished last thread"))
+      lift $ threadDelay 1000000
+      release dKey
+      lift $ putStrLn "Finished helper thread"
+
+test11 :: IO ()
+test11 =
+  runAllocateT $ do
+    (_, _) <- allocate (putStrLn "A aquired") (\_ -> putStrLn "A released")
+    lift $ putStrLn "After a"
+    (_, bKey) <- allocate (putStrLn "B aquired") (\_ -> putStrLn "B released")
+    lift $ putStrLn "After b"
+    (_, cKey) <- allocate (putStrLn "C aquired") (\_ -> putStrLn "C released")
+    lift $ putStrLn "After c"
+    release bKey
+    resourceFork myFork forkFunction
+    release cKey
+    release cKey
+    lift $ putStrLn "finished"
+  where
+    forkFunction :: AllocateT IO ()
+    forkFunction = do
+      (_, _) <- allocate (putStrLn "D aquired") (\_ -> putStrLn "D released")
+      lift $ putStrLn "After d"
+      resourceFork
+        myFork
+        (allocate (putStrLn "E aquired") (\_ -> putStrLn "E released") >> lift (putStrLn "Finished last thread"))
+      lift $ threadDelay 1000000
+      lift $ putStrLn "Finished helper thread"
