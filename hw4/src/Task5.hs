@@ -9,18 +9,19 @@ module Task5
   , resourceFork
   ) where
 
+import Control.Concurrent.MVar (MVar, newEmptyMVar, putMVar, takeMVar)
 import Control.Concurrent.STM (STM, atomically)
 import Control.Concurrent.STM.TVar (TVar, newTVar, readTVar, writeTVar)
 import Control.Exception (SomeException)
-import Control.Monad (forM, forM_, liftM)
-import Control.Monad.Catch (MonadCatch, MonadMask, bracket, catchAll, mask_, throwM)
+import Control.Monad (forM, forM_)
+import Control.Monad.Catch (MonadCatch, MonadMask, catchAll, finally, mask_, throwM)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader (ReaderT (..), ask, runReaderT)
 import Control.Monad.Trans (lift)
 import Data.Either (lefts)
 import Data.Functor ((<$))
 import Data.Hashable (Hashable, hashWithSalt)
-import qualified ListT as LT
+import Data.IORef (IORef, modifyIORef', newIORef, readIORef)
 import qualified StmContainers.Map as M
 
 data Resource = Resource
@@ -36,14 +37,13 @@ instance Hashable ResourceKey where
   hashWithSalt salt ResourceKey {key = curKey} = hashWithSalt salt curKey
 
 data ResourceHolder = ResourceHolder
-  { resources        :: M.Map ResourceKey Resource
-  , maxResouceNumber :: TVar Integer
+  { resources        :: M.Map ResourceKey Resource -- Shared between all threads
+  , maxResouceNumber :: TVar Integer -- Shared between all threads
+  , ownedResources   :: IORef [ResourceKey] -- Thread-local
+  , mvarsToTake      :: IORef [MVar ()] -- Thread-local
   }
 
 type AllocateT m a = ReaderT ResourceHolder m a
-
-tryAll :: (MonadCatch m) => m a -> m (Either SomeException a)
-tryAll a = (Right `liftM` a) `catchAll` (return . Left)
 
 allocate :: (MonadIO m, MonadMask m) => IO a -> (a -> IO ()) -> AllocateT m (a, ResourceKey)
 allocate resourceAquireAction resourceReleaseAction =
@@ -54,7 +54,7 @@ allocate resourceAquireAction resourceReleaseAction =
   where
     addResourceToMap :: (MonadIO m, MonadMask m) => a -> IO () -> AllocateT m (a, ResourceKey)
     addResourceToMap resource releaseAction = do
-      ResourceHolder {resources = curResourcesMap, maxResouceNumber = maxNumberRef} <- ask
+      ResourceHolder {resources = curResourcesMap, maxResouceNumber = maxNumberRef, ownedResources = resListRef} <- ask
       curResourceKey <-
         lift $
         liftIO $
@@ -64,51 +64,28 @@ allocate resourceAquireAction resourceReleaseAction =
           writeTVar maxNumberRef (curMaxNumber + 1)
           M.insert (Resource 1 releaseAction) addedResourceKey curResourcesMap
           return addedResourceKey
+      lift $
+        liftIO $
+        modifyIORef' resListRef (curResourceKey :) `catchAll`
+        (\e -> atomically (M.delete curResourceKey curResourcesMap) >> throwM e)
       return (resource, curResourceKey)
     cleanResource :: (MonadIO m, MonadMask m) => IO () -> SomeException -> AllocateT m (a, ResourceKey)
     cleanResource releaseAction e = lift (liftIO releaseAction) `catchAll` (\_ -> return ()) >> throwM e
 
-cleanResources :: (MonadIO m, MonadMask m) => ResourceHolder -> m ()
-cleanResources ResourceHolder {resources = resourcesMap} = do
-  releaseActionsToPerform <- liftIO $ getActionsToCleanup resourcesMap
-  liftIO $ doCleanupAll releaseActionsToPerform
-  where
-    doCleanupAll :: [IO ()] -> IO ()
-    doCleanupAll actionsToPerform = do
-      results <- forM actionsToPerform tryAll
-      case lefts results of
-        []   -> return ()
-        ex:_ -> throwM ex
-    getActionsToCleanup :: M.Map ResourceKey Resource -> IO [IO ()]
-    getActionsToCleanup curMap =
-      mask_ $
-      atomically $ do
-        resourcesList <- LT.toList $ M.listT curMap
-        let (listToRelease, listToDecrease) = divideResourceList resourcesList ([], [])
-        forM_ listToRelease $ \(curKeyToRelease, _) -> M.delete curKeyToRelease curMap
-        forM_ listToDecrease $ \(curKeyToDecrease, curResource@Resource {holdersCount = curHoldersCount}) -> do
-          M.delete curKeyToDecrease curMap
-          M.insert (curResource {holdersCount = curHoldersCount - 1}) curKeyToDecrease curMap
-        return $ map getReleaseAction listToRelease
-    divideResourceList ::
-         [(ResourceKey, Resource)]
-      -> ([(ResourceKey, Resource)], [(ResourceKey, Resource)])
-      -> ([(ResourceKey, Resource)], [(ResourceKey, Resource)])
-    divideResourceList [] lists = lists
-    divideResourceList (curPair@(_, curResource):otherPairs) (listToClean, listToDecrease)
-      | holdersCount curResource == 1 = divideResourceList otherPairs (curPair : listToClean, listToDecrease)
-      | otherwise = divideResourceList otherPairs (listToClean, curPair : listToDecrease)
-    getReleaseAction :: (ResourceKey, Resource) -> IO ()
-    getReleaseAction (_, resource) = freeAction resource
-
 runAllocateT :: (MonadIO m, MonadMask m) => AllocateT m a -> m a
-runAllocateT actionToRun = bracket makeEnvironment cleanResources (runReaderT actionToRun)
+runAllocateT actionToRun = do
+  (startMap, startResourceNumber) <- liftIO $ atomically $ (,) <$> M.new <*> newTVar 0
+  aquiredResources <- liftIO $ newIORef []
+  sonRefs <- liftIO $ newIORef []
+  let mainResourceholder = ResourceHolder startMap startResourceNumber aquiredResources sonRefs
+  runReaderT (actionToRun `finally` onFinishAction) mainResourceholder
   where
-    makeEnvironment :: MonadIO m => m ResourceHolder
-    makeEnvironment = do
-      startMap <- liftIO $ atomically M.new
-      startResourceNumber <- liftIO $ atomically $ newTVar 0
-      return ResourceHolder {resources = startMap, maxResouceNumber = startResourceNumber}
+    onFinishAction :: (MonadIO m, MonadMask m) => AllocateT m ()
+    onFinishAction = do
+      resHolder@ResourceHolder {mvarsToTake = childsListRef} <- ask
+      childsList <- lift $ liftIO $ readIORef childsListRef
+      lift $ liftIO $ forM_ childsList $ \curChild -> takeMVar curChild `catchAll` (\_ -> return ())
+      releaseResourcesFromMap resHolder
 
 release ::
      forall m. (MonadIO m, MonadMask m)
@@ -133,19 +110,87 @@ release resourceKey =
         Just Resource {freeAction = curFreeAction} -> Just curFreeAction <$ M.delete resourceKey resourceMap
 
 resourceFork :: (MonadIO m, MonadMask m) => (m () -> m ()) -> AllocateT m () -> AllocateT m ()
-resourceFork forkFunction action = bracket updateEnvironment cleanResources (performFork forkFunction action)
+resourceFork forkFunction action =
+  mask_ $ do
+    sonEnvironment <- getNewEnvironment
+    spawnChild sonEnvironment forkFunction action `catchAll` (\e -> cleanEnvironment >> throwM e)
   where
-    updateEnvironment :: (MonadIO m, MonadMask m) => AllocateT m ResourceHolder
-    updateEnvironment = do
-      curHolder@ResourceHolder {resources = curResourcesMap} <- ask
+    getNewEnvironment :: (MonadIO m, MonadMask m) => AllocateT m ResourceHolder
+    getNewEnvironment = do
+      curHolder@ResourceHolder {resources = sharedResources, ownedResources = localOwnedResources} <- ask
+      localResourceList <- lift $ liftIO $ readIORef localOwnedResources
+      sonResourceListRef <- lift $ liftIO $ newIORef localResourceList
+      sonMVarsToTake <- lift $ liftIO $ newIORef []
       lift $
         liftIO $
-        atomically $ do
-          resourcesList <- LT.toList $ M.listT curResourcesMap
-          forM_ resourcesList $ \(curKey, curResource@Resource {holdersCount = curHoldersCount}) -> do
-            M.delete curKey curResourcesMap
-            M.insert curResource {holdersCount = curHoldersCount + 1} curKey curResourcesMap
-      return curHolder
-    performFork :: (MonadIO m, MonadMask m) => (m () -> m ()) -> AllocateT m () -> ResourceHolder -> AllocateT m ()
-    performFork forkImplementation actionToPerform curMap =
-      ReaderT $ \_ -> forkImplementation (runReaderT actionToPerform curMap)
+        atomically $
+        forM_ localResourceList $ \localResourceKey -> do
+          maybeResource <- M.lookup localResourceKey sharedResources
+          case maybeResource of
+            Nothing -> return ()
+            Just curResource@Resource {holdersCount = curHoldersCount} -> do
+              M.delete localResourceKey sharedResources
+              M.insert curResource {holdersCount = curHoldersCount + 1} localResourceKey sharedResources
+      return curHolder {ownedResources = sonResourceListRef, mvarsToTake = sonMVarsToTake}
+    spawnChild :: (MonadIO m, MonadMask m) => ResourceHolder -> (m () -> m ()) -> AllocateT m () -> AllocateT m ()
+    spawnChild childResHolder forkPerformer actionToDo = do
+      ResourceHolder {mvarsToTake = childListRef} <- ask
+      newChildRef <- lift $ liftIO newEmptyMVar
+      lift $ liftIO $ modifyIORef' childListRef (newChildRef :)
+      lift $ forkPerformer $ runReaderT (actionToDo `finally` onFinishChildAction newChildRef) childResHolder
+    onFinishChildAction :: (MonadIO m, MonadMask m) => MVar () -> AllocateT m ()
+    onFinishChildAction mvarToPut = do
+      childResHolder@ResourceHolder {mvarsToTake = childsListRef} <- ask
+      childsList <- lift $ liftIO $ readIORef childsListRef
+      lift $ liftIO $ forM_ childsList $ \curChild -> takeMVar curChild `catchAll` (\_ -> return ())
+      releaseResourcesFromMap childResHolder
+      lift $ liftIO $ putMVar mvarToPut ()
+    cleanEnvironment :: (MonadIO m, MonadMask m) => AllocateT m ()
+    cleanEnvironment = do
+      ResourceHolder {resources = sharedResources, ownedResources = localOwnedResources} <- ask
+      localResourceList <- lift $ liftIO $ readIORef localOwnedResources
+      lift $
+        liftIO $
+        atomically $
+        forM_ localResourceList $ \localResourceKey -> do
+          maybeResource <- M.lookup localResourceKey sharedResources
+          case maybeResource of
+            Nothing -> return ()
+            Just curResource@Resource {holdersCount = curHoldersCount} -> do
+              M.delete localResourceKey sharedResources
+              M.insert curResource {holdersCount = curHoldersCount - 1} localResourceKey sharedResources
+
+releaseResourcesFromMap :: (MonadIO m, MonadMask m) => ResourceHolder -> m ()
+releaseResourcesFromMap ResourceHolder {resources = resourcesMap, ownedResources = threadResKeysRef} = do
+  threadResKeys <- liftIO $ readIORef threadResKeysRef
+  releaseActionsToPerform <- liftIO $ getActionsToCleanup threadResKeys resourcesMap
+  liftIO $ doCleanupAll releaseActionsToPerform
+  where
+    getActionsToCleanup :: [ResourceKey] -> M.Map ResourceKey Resource -> IO [IO ()]
+    getActionsToCleanup threadResKeys curMap = mask_ $ atomically $ updateMap curMap threadResKeys
+    updateMap :: M.Map ResourceKey Resource -> [ResourceKey] -> STM [IO ()]
+    updateMap _ [] = return []
+    updateMap curMap (curKey:otherKeys) = do
+      maybeCurRes <- M.lookup curKey curMap
+      case maybeCurRes of
+        Nothing -> updateMap curMap otherKeys
+        Just Resource {holdersCount = 1, freeAction = curFreeAction} -> do
+          M.delete curKey curMap
+          otherFreeActions <- updateMap curMap otherKeys
+          return $ curFreeAction : otherFreeActions
+        Just curRes@Resource {holdersCount = n} -> do
+          M.delete curKey curMap
+          M.insert curRes {holdersCount = n - 1} curKey curMap
+          updateMap curMap otherKeys
+    doCleanupAll :: [IO ()] -> IO ()
+    doCleanupAll actionsToPerform = do
+      results <- forM actionsToPerform tryAll
+      case lefts results of
+        []   -> return ()
+        ex:_ -> throwM ex
+
+tryAll :: (MonadCatch m) => m a -> m (Either SomeException a)
+tryAll action =
+  (do result <- action
+      return $ Right result) `catchAll`
+  (return . Left)
