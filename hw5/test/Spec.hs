@@ -5,7 +5,7 @@ module Main
 import Task5Spec (choosingSpec, simpleLensSpec, strangeLensSpec, tupleFirstLensSpec,
                   tupleSecondLensSpec)
 import Task7Spec (fileSystemTraversalsSpec)
-import Task8Spec (fileSystemModifySpec)
+import Task8Spec (changeExtensionSpec, getAllChildrenSpec, rmSpec)
 import Test.Hspec (hspec)
 
 main :: IO ()
@@ -17,4 +17,6 @@ main =
     choosingSpec
     strangeLensSpec
     fileSystemTraversalsSpec
-    fileSystemModifySpec
+    changeExtensionSpec
+    getAllChildrenSpec
+    rmSpec

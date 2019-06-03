@@ -18,17 +18,21 @@ changeExtension newExtension rootDirectory =
     changeExtensionForSingleFile curFile = curFile & name %~ (-<.> newExtension)
 
 getAllChildren :: FS -> [FilePath]
-getAllChildren fs = getFilenamesInCurrentDirectory ++ (getDirectoriesInCurrentDirectory >>= getAllChildren)
+getAllChildren fs =
+  getFilenamesInCurrentDirectory ++ getDirectoryNamesInCurrentDirectory ++
+  (getDirectoriesInCurrentDirectory >>= getAllChildren)
   where
     getFilenamesInCurrentDirectory :: [FilePath]
     getFilenamesInCurrentDirectory = fs ^.. _Dir . _2 . traversed . filtered isFile . name
     getDirectoriesInCurrentDirectory :: [FS]
     getDirectoriesInCurrentDirectory = fs ^.. _Dir . _2 . traversed . filtered isDir
+    getDirectoryNamesInCurrentDirectory :: [FilePath]
+    getDirectoryNamesInCurrentDirectory = getDirectoriesInCurrentDirectory ^.. traversed . name
 
 rm :: FilePath -> FS -> FS
 rm dirName = (& _Dir . _2 %~ filter dirIsRetained)
   where
     dirIsRetained :: FS -> Bool
     dirIsRetained File {..}                   = True
-    dirIsRetained curDir@Dir {_contents = []} = curDir ^. name == dirName
+    dirIsRetained curDir@Dir {_contents = []} = (curDir ^. name) /= dirName
     dirIsRetained Dir {_contents = _:_}       = True

@@ -41,7 +41,8 @@ test-suite doctests
     , microlens
   other-modules:
         Task5Spec,
-        Task7Spec
+        Task7Spec,
+        Task8Spec
   ghc-options:      -Wall -threaded
   hs-source-dirs:   test
   default-language: Haskell2010
