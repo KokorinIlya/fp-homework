@@ -6,7 +6,6 @@ module Task6
   , name
   , isDir
   , isFile
-  , contents
   , _Dir
   , _File
   ) where
@@ -71,11 +70,7 @@ isDir :: FS -> Bool
 isDir Dir {..}  = True
 isDir File {..} = False
 
--- Should be prism, but profunctor optics is painfull
-contents :: Traversal' FS [FS]
-contents f dir@Dir {_contents = dirContent} = (\newContent -> dir {_contents = newContent}) <$> f dirContent
-contents _ file@File {..} = pure file
-
+-- Should be prism, but profunctor optics are too painfull
 _Dir :: Traversal' FS (FilePath, [FS])
 _Dir f (Dir dirName dirContents) = uncurry Dir <$> f (dirName, dirContents)
 _Dir _ file                      = pure file

@@ -66,7 +66,7 @@ tupleFirstLensSpec =
     it "gets values of complex types" $ do (james, "Hello") ^. _1 . address . house `shouldBe` 42
     it "sets values" $ do (("Hello", 2) & _1 .~ "hello") `shouldBe` (("hello", 2) :: (String, Int))
     it "sets values with different types" $ do (("Hello", 2) & _1 .~ 1) `shouldBe` ((1, 2) :: (Int, Int))
-    it "sets values" $ do (("Hello", 2) & _1 %~ (++ ", world")) `shouldBe` (("Hello, world", 2) :: (String, Int))
+    it "changes values" $ do (("Hello", 2) & _1 %~ (++ ", world")) `shouldBe` (("Hello, world", 2) :: (String, Int))
 
 tupleSecondLensSpec :: SpecWith ()
 tupleSecondLensSpec =

@@ -59,6 +59,8 @@ rmSpec =
   describe "Task8.rm" $ do
     it "removes empty directories with matching name" $ do
       rm "AA" testFS ^.. ls `shouldBe` ["A", "AAOther", "A1.a1", "A2.a2", "A3.a3"]
+    it "removes empty directories with matching name" $ do
+      rm "AAOther" testFS ^.. ls `shouldBe` ["A", "AA", "A1.a1", "A2.a2", "A3.a3"]
     it "doesn't remove empty directories with non-matching name" $ do
       rm "AB" testFS ^.. ls `shouldBe` ["A", "AA", "AAOther", "A1.a1", "A2.a2", "A3.a3"]
     it "doesn't remove non-empty directories" $ do
