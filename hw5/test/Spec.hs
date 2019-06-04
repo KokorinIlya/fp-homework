@@ -2,6 +2,7 @@ module Main
   ( main
   ) where
 
+import Task1Spec (stSpec)
 import Task5Spec (choosingSpec, simpleLensSpec, strangeLensSpec, tupleFirstLensSpec,
                   tupleSecondLensSpec)
 import Task7Spec (fileSystemTraversalsSpec)
@@ -11,6 +12,7 @@ import Test.Hspec (hspec)
 main :: IO ()
 main =
   hspec $ do
+    stSpec
     simpleLensSpec
     tupleFirstLensSpec
     tupleSecondLensSpec

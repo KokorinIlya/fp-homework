@@ -19,6 +19,7 @@ tested-with:         GHC == 8.0.1
 library
   hs-source-dirs:      src
   exposed-modules:
+        Task1,
         Task5,
         Task6,
         Task7,
@@ -27,7 +28,9 @@ library
   build-depends:       base >= 4.9 && < 5,
                        directory,
                        filepath,
-                       microlens
+                       microlens,
+                       containers,
+                       mtl
   default-language:    Haskell2010
 
 test-suite doctests
@@ -40,6 +43,7 @@ test-suite doctests
     , hw5
     , microlens
   other-modules:
+        Task1Spec,
         Task5Spec,
         Task7Spec,
         Task8Spec
